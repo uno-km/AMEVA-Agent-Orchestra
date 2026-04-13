@@ -49,7 +49,7 @@ If (-Not (Test-Path $msvcPath)) {
 # ==========================================
 Write-Host "`n[2/5] Downloading Qwen Model..." -ForegroundColor Yellow
 [string]$modelUrl = 'https://huggingface.co/Qwen/Qwen1.5-1.8B-Chat-GGUF/resolve/main/qwen1_5-1_8b-chat-q4_k_m.gguf'.Trim()
-If (-Not (Test-Path "qwen.gguf")) {
+If (-Not (Test-Path "model\qwen.gguf")) {
     Invoke-WebRequest -Uri $modelUrl -OutFile "model/qwen.gguf"
     Write-Host "=> Model Downloaded." -ForegroundColor Green
 } Else {
@@ -62,10 +62,12 @@ If (-Not (Test-Path "qwen.gguf")) {
 Write-Host "`n[3/5] Setting up Python Environment..." -ForegroundColor Yellow
 If (Test-Path "ameva_orchestra_env") { Remove-Item -Recurse -Force "ameva_orchestra_env" }
 python -m venv ameva_orchestra_env
-& ".\ameva_orchestra_env\Scripts\python.exe" -m pip install --upgrade pip
+# 파이썬 3.12 이상 환경에서 venv 생성 시 pip 소실 버그 방지 (ensurepip)
+& ".\ameva_orchestra_env\Scripts\python.exe" -m ensurepip --upgrade
+& ".\ameva_orchestra_env\Scripts\python.exe" -m pip install --upgrade pip setuptools wheel
 & ".\ameva_orchestra_env\Scripts\python.exe" -m pip cache purge
 
-# 기본 패키지 설치
+# 기본 패키지 설치 (setuptools 포함 및 GPUtil 의 distutils 문제 해결 완료)
 & ".\ameva_orchestra_env\Scripts\python.exe" -m pip install PyQt6 watchdog psutil GPUtil
 
 # ==========================================
