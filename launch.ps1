@@ -1,3 +1,8 @@
+# ==========================================
+# PowerShell 한글 깨짐 방지 및 환경 설정
+# ==========================================
+$OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = "Stop"
 
 # [보안/안전] 스크립트가 실행되는 파일의 실제 위치로 경로를 강제 고정합니다.
@@ -25,7 +30,7 @@ Write-Host "`n[1/5] MSVC C++ 컴파일러 확인 중..." -ForegroundColor Yellow
 $msvcPath = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC"
 If (-Not (Test-Path $msvcPath)) {
     Write-Host "  -> C++ 컴파일러 설치를 시작합니다 (수 분 소요)..." -ForegroundColor Yellow
-    Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vs_buildtools.exe" -OutFile "vs_buildtools.exe"
+    Invoke-WebRequest -Uri "[https://aka.ms/vs/17/release/vs_buildtools.exe](https://aka.ms/vs/17/release/vs_buildtools.exe)" -OutFile "vs_buildtools.exe"
     Start-Process -FilePath ".\vs_buildtools.exe" -ArgumentList "--quiet --wait --norestart --nocache --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended" -Wait
     Remove-Item -Force "vs_buildtools.exe"
     Write-Host "=> C++ 컴파일러 설치 완료!" -ForegroundColor Green
@@ -54,7 +59,7 @@ If (-Not (Get-Command nvcc -ErrorAction SilentlyContinue)) {
 # [3] GGUF 모델 다운로드
 # ==========================================
 Write-Host "`n[3/5] Qwen 1.5B GGUF 모델 확인 중..." -ForegroundColor Yellow
-$modelUrl = "https://huggingface.co/Qwen/Qwen1.5-1.8B-Chat-GGUF/resolve/main/qwen1_5-1_8b-chat-q4_k_m.gguf"
+$modelUrl = "[https://huggingface.co/Qwen/Qwen1.5-1.8B-Chat-GGUF/resolve/main/qwen1_5-1_8b-chat-q4_k_m.gguf](https://huggingface.co/Qwen/Qwen1.5-1.8B-Chat-GGUF/resolve/main/qwen1_5-1_8b-chat-q4_k_m.gguf)"
 If (-Not (Test-Path "qwen.gguf")) {
     Write-Host "  -> 모델을 다운로드합니다..." -ForegroundColor Yellow
     Invoke-WebRequest -Uri $modelUrl -OutFile "qwen.gguf"
