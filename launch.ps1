@@ -101,7 +101,7 @@ foreach ($name in $models.Keys) {
 }
 
 # 기본 로드 모델은 qwen.gguf로 유지
-$PrimaryModel = Join-Path $ModelDir "qwen.gguf"
+$PrimaryModel = Join-Path $ModelDir "qwen2.5-0.5b.gguf"
 if (-Not (Test-Path $PrimaryModel)) {
     Write-Host "[Error] 핵심 모델 qwen.gguf를 찾을 수 없습니다. 설치를 다시 시도하세요." -ForegroundColor Red
     exit 1
