@@ -39,6 +39,13 @@ class AgentWorker(QThread):
             
             if self.isInterruptionRequested(): return
 
+            if self.agent_id == "command":
+                self._validate_command_plan(result_json)
+            elif self.agent_id != "command" and "plan" in result_json:
+                logger.warning(f"{self.agent_id.upper()} returned plan data unexpectedly. Removing plan field.")
+                result_json.pop("plan")
+                result_json["message"] = (result_json.get("message", "") + " [WARNING] Non-command agents must not generate new plans.").strip()
+
             # 파일 생성형 에이전트(file, code, doc)만 물리 파일 작업 수행
             if self.agent_id not in ["command", "secretary"]:
                 if result_json.get("status") == 200 and "file_name" in result_json:
@@ -66,6 +73,8 @@ class AgentWorker(QThread):
                 next_task = next_plan.pop(0)
                 next_task["plan"] = next_plan
                 next_task["passed_result"] = f"Prev Agent({self.agent_id}) Result: {result_json.get('message')}\nSummary: {result_json.get('summary', 'N/A')}"
+                next_task["hop_count"] = self.task_data.get("hop_count", 0) + 1
+                next_task["visited_targets"] = list(self.task_data.get("visited_targets", [])) + [self.agent_id]
 
             self.finished_task.emit(self.agent_id, result_json, next_task if next_task else {}, usage)
             
@@ -88,3 +97,16 @@ class AgentWorker(QThread):
             with open(p, 'a', encoding='utf-8') as f:
                 f.write(f"### [{ts}] {action}\n- Result: {res}\n\n")
         except: pass
+
+    def _validate_command_plan(self, result_json):
+        if "plan" not in result_json or not isinstance(result_json["plan"], list):
+            raise ValueError("Command agent returned invalid or missing plan structure.")
+
+        valid_targets = {"file", "code", "doc", "secretary"}
+        for idx, item in enumerate(result_json["plan"]):
+            if not isinstance(item, dict):
+                raise ValueError(f"Command plan item {idx} is not a JSON object.")
+            if item.get("target") not in valid_targets:
+                raise ValueError(f"Command plan item {idx} has invalid target '{item.get('target')}'.")
+            if not item.get("instruction") or not isinstance(item["instruction"], str):
+                raise ValueError(f"Command plan item {idx} must include a non-empty string instruction.")

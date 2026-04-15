@@ -1,5 +1,5 @@
-from PyQt6.QtWidgets import QFrame, QLabel, QVBoxLayout, QProgressBar
-from PyQt6.QtCore import Qt, QPoint
+from PyQt6.QtWidgets import QFrame, QLabel, QVBoxLayout, QProgressBar, QPushButton
+from PyQt6.QtCore import Qt, QPoint, pyqtSignal
 from PyQt6.QtGui import QFont, QColor, QPainter, QPen
 
 class ResourceGraph(QFrame):
@@ -34,11 +34,13 @@ class ResourceGraph(QFrame):
 
 class AgentWidget(QFrame):
     """에이전트 카드: 상태, 토큰 사용량, 진행도 표시"""
+    detail_requested = pyqtSignal(str)
+
     def __init__(self, a_id, emoji, name, rank, parent=None):
         super().__init__(parent)
         self.a_id = a_id
         self.rank = rank
-        self.setFixedSize(145, 195)
+        self.setFixedSize(180, 240)
         self.home_pos = QPoint(0,0)
         
         self.bg_color = '#f39c12' if rank == 'noble' else '#1abc9c' if rank == 'writer' else '#2980b9'
@@ -57,9 +59,26 @@ class AgentWidget(QFrame):
         self.st.setStyleSheet("font-size:11px; color:#ecf0f1;")
         self.st.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
+        self.task = QLabel("Task: None")
+        self.task.setWordWrap(True)
+        self.task.setStyleSheet("font-size:10px; color:#f5f6fa;")
+        
+        self.passed = QLabel("Received: None")
+        self.passed.setWordWrap(True)
+        self.passed.setStyleSheet("font-size:10px; color:#dcdde1;")
+        
+        self.runtime = QLabel("Elapsed: 0s")
+        self.runtime.setStyleSheet("font-size:10px; color:#dcdde1;")
+        self.runtime.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
         self.tk = QLabel("P:0 / C:0")
         self.tk.setStyleSheet("font-family:Consolas; font-size:10px; color:#ecf0f1;")
         self.tk.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        self.detail_btn = QPushButton("Details")
+        self.detail_btn.setFixedHeight(24)
+        self.detail_btn.setStyleSheet("background:#000000; color:#ffffff; border-radius:6px; font-size:10px;")
+        self.detail_btn.clicked.connect(lambda: self.detail_requested.emit(self.a_id))
         
         self.pr = QProgressBar()
         self.pr.setFixedHeight(12)
@@ -70,11 +89,23 @@ class AgentWidget(QFrame):
         l.addWidget(self.emo)
         l.addWidget(self.nm)
         l.addWidget(self.st)
+        l.addWidget(self.task)
+        l.addWidget(self.passed)
+        l.addWidget(self.runtime)
         l.addWidget(self.tk)
+        l.addWidget(self.detail_btn)
         l.addWidget(self.pr)
 
     def update_usage(self, u):
         self.tk.setText(f"P:{u.get('prompt_tokens', 0)} / C:{u.get('completion_tokens', 0)}")
+
+    def update_task(self, instruction, passed_result):
+        self.task.setText(f"Task: {instruction[:64]}" if instruction else "Task: None")
+        self.passed.setText(f"Received: {passed_result[:64]}" if passed_result else "Received: None")
+
+    def update_runtime(self, elapsed_seconds):
+        mins, secs = divmod(int(elapsed_seconds), 60)
+        self.runtime.setText(f"Elapsed: {mins}m {secs}s")
 
     def set_working(self, is_w, txt="🔥 Working"):
         if is_w: 

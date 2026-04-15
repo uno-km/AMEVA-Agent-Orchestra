@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-                             QPushButton, QProgressBar, QListWidget, QListWidgetItem, QWidget)
+                             QPushButton, QProgressBar, QListWidget, QListWidgetItem, QWidget, QTextEdit)
 from PyQt6.QtCore import Qt
 from core.bootstrap import HardwareProfiler, ModelDownloader
 from core.config import AVAILABLE_MODELS
@@ -129,3 +129,27 @@ class StartupModelModal(QDialog):
         m = self.current_rendered_models[model_idx]
         self.selected_model_path = os.path.join(MODEL_DIR, m["filename"])
         self.accept()
+
+
+class AgentLogModal(QDialog):
+    def __init__(self, agent_id, parent=None):
+        super().__init__(parent)
+        self.agent_id = agent_id
+        self.setWindowTitle(f"{agent_id.upper()} Log")
+        self.setWindowModality(Qt.WindowModal)
+        self.resize(620, 420)
+        self.setStyleSheet("background:#1e272e; color:#f5f6fa; font-family: 'Segoe UI';")
+
+        layout = QVBoxLayout(self)
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        self.log_text.setStyleSheet("background:#121f2f; color:#f5f6fa; border-radius:8px; padding:10px;")
+        layout.addWidget(self.log_text)
+
+    def append_log(self, message):
+        self.log_text.append(message)
+        self.log_text.verticalScrollBar().setValue(self.log_text.verticalScrollBar().maximum())
+
+    def closeEvent(self, event):
+        self.hide()
+        event.accept()

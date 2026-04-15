@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QTextEdit, QLineEdit, QPushButton, QLabel, QFrame, QListWidget, QComboBox, QMessageBox)
 from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QPoint, QEasingCurve, pyqtSlot
 from ui.components import ResourceGraph, AgentWidget
+from ui.modals import StartupModelModal, AgentLogModal
 from agents.orchestrator import Orchestrator
 from core.llm_engine import LlamaInferenceCore
 from core.sre import WorkspaceWatcher, WatchdogSignalEmitter, logger
@@ -18,9 +19,14 @@ class CodeGodEnterprise(QMainWindow):
         self.anims = {}
         self.orchestrator = Orchestrator()
         self.orchestrator.worker_started.connect(self.on_worker_started)
+        self.orchestrator.task_assigned.connect(self.on_task_assigned)
         self.orchestrator.worker_finished.connect(self.on_worker_done)
         self.orchestrator.worker_error.connect(self.on_worker_fail)
         self.orchestrator.handoff_triggered.connect(self.trigger_handoff)
+
+        self.agent_start_times = {}
+        self.agent_log_messages = {}
+        self.agent_modals = {}
 
         self.init_ui()
         self.setup_agents()
@@ -85,6 +91,10 @@ class CodeGodEnterprise(QMainWindow):
         rl.addWidget(QLabel("📈 REAL-TIME INFRA RESOURCES"))
         self.graph = ResourceGraph()
         rl.addWidget(self.graph)
+
+        self.resource_status = QLabel("CPU: 0% | RAM: 0% | GPU: 0%")
+        self.resource_status.setStyleSheet("font-size:12px; color:#dcdde1; margin-bottom:8px;")
+        rl.addWidget(self.resource_status)
         
         rl.addWidget(QLabel("🚨 WATCHDOG & SRE EVENTS"))
         self.sre_trace = QTextEdit()
@@ -121,7 +131,9 @@ class CodeGodEnterprise(QMainWindow):
             a = AgentWidget(aid, emo, aid.upper(), rank, self.office)
             a.home_pos = QPoint(x, y)
             a.move(a.home_pos)
+            a.detail_requested.connect(self.open_agent_log)
             self.agents[aid] = a
+            self.agent_log_messages[aid] = []
 
     def setup_sre_police(self):
         self.timer = QTimer(self)
@@ -140,6 +152,8 @@ class CodeGodEnterprise(QMainWindow):
         r = psutil.virtual_memory().percent
         g = LlamaInferenceCore.get_instance().get_gpu_load_safe()
         self.graph.update_data(c, r, g)
+        self.resource_status.setText(f"CPU: {c}% | RAM: {r}% | GPU: {int(g)}%")
+        self.update_agent_runtimes()
         
         if r > 93.0:
             self.sre_trace.append("🚨 [CRITICAL] RAM 과부하! OS OOM 보호를 위해 워커 강제 종료...")
@@ -160,24 +174,40 @@ class CodeGodEnterprise(QMainWindow):
     def on_worker_started(self, aid):
         if aid in self.agents:
             self.agents[aid].set_working(True)
+            self.agent_start_times[aid] = datetime.now()
+            self.append_agent_history(aid, "Worker started.")
 
     @pyqtSlot(str, str)
     def on_worker_fail(self, aid, err):
         self.log_msg(f"[{aid}] FAILED: {err[:120]}", "ERROR")
         if aid in self.agents:
             self.agents[aid].set_working(False)
+            if aid in self.agent_start_times:
+                elapsed = (datetime.now() - self.agent_start_times.pop(aid)).total_seconds()
+                self.agents[aid].update_runtime(elapsed)
+        self.append_agent_history(aid, f"Task failed: {err[:120]}")
 
     @pyqtSlot(str, dict, dict)
     def on_worker_done(self, aid, res, usage):
         if aid in self.agents:
             self.agents[aid].set_working(False)
             self.agents[aid].update_usage(usage)
+            if aid in self.agent_start_times:
+                elapsed = (datetime.now() - self.agent_start_times.pop(aid)).total_seconds()
+                self.agents[aid].update_runtime(elapsed)
         
-        if res.get("status", 200) != 200: 
-            self.log_msg(f"[{aid}] ERROR: {res.get('message')}", "ERROR")
+        status = res.get("status", 200)
+        if status >= 400:
+            self.log_msg(f"[{aid}] ERROR: {res.get('message', 'Unknown error')} (status={status})", "ERROR")
+            self.append_agent_history(aid, f"Task failed: {res.get('message', 'Unknown error')} (status={status})")
             return
-            
+        if status == 300:
+            self.log_msg(f"[{aid}] TERMINATED: {res.get('message', 'Task ended with no further action.')}")
+            self.append_agent_history(aid, f"Task terminated: {res.get('message', 'Task ended with no further action.')}")
+            return
+        
         self.log_msg(f"[{aid}] COMPLETED: {res.get('message', 'Mission Done.')}")
+        self.append_agent_history(aid, f"Task completed: {res.get('message', 'Mission Done.')}")
         
         # 비서 보고
         if aid == "secretary":
@@ -211,6 +241,41 @@ class CodeGodEnterprise(QMainWindow):
         if os.path.exists(p):
             with open(p, 'r', encoding='utf-8') as f: 
                 self.m_view.setText(f.read())
+
+    @pyqtSlot(str, dict)
+    def on_task_assigned(self, aid, task_data):
+        if aid in self.agents:
+            instruction = task_data.get("instruction", "None")
+            passed = task_data.get("passed_result", "None")
+            self.agents[aid].update_task(instruction, passed)
+            self.append_agent_history(aid, f"Assigned task: {instruction}\nReceived: {passed}")
+
+    def append_agent_history(self, aid, message):
+        if aid not in self.agent_log_messages:
+            self.agent_log_messages[aid] = []
+        formatted = f"[{datetime.now().strftime('%H:%M:%S')}] {message}"
+        self.agent_log_messages[aid].append(formatted)
+        if aid in self.agent_modals and self.agent_modals[aid].isVisible():
+            self.agent_modals[aid].append_log(formatted)
+
+    def open_agent_log(self, aid):
+        if aid not in self.agent_modals:
+            self.agent_modals[aid] = AgentLogModal(aid, self)
+        modal = self.agent_modals[aid]
+        modal.log_text.clear()
+        if self.agent_log_messages.get(aid):
+            for line in self.agent_log_messages[aid]:
+                modal.append_log(line)
+        if not modal.isVisible():
+            modal.show()
+        modal.raise_()
+        modal.activateWindow()
+
+    def update_agent_runtimes(self):
+        for aid, start_time in self.agent_start_times.items():
+            if aid in self.agents:
+                elapsed = (datetime.now() - start_time).total_seconds()
+                self.agents[aid].update_runtime(elapsed)
 
     def closeEvent(self, event):
         self.observer.stop()

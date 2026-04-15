@@ -5,9 +5,13 @@ from core.sre import logger
 
 class Orchestrator(QObject):
     worker_started = pyqtSignal(str) # agent_id
+    task_assigned = pyqtSignal(str, dict) # agent_id, task_data
     worker_finished = pyqtSignal(str, dict, dict) # agent_id, result_json, usage
     worker_error = pyqtSignal(str, str) # agent_id, error
     handoff_triggered = pyqtSignal(str, str, dict) # from_id, to_id, next_task
+
+    VALID_TARGETS = {"command", "secretary", "file", "code", "doc"}
+    MAX_HANDOFFS = 12
 
     def __init__(self):
         super().__init__()
@@ -18,14 +22,47 @@ class Orchestrator(QObject):
     def set_max_processors(self, max_proc):
         self.max_concurrent_processors = max_proc
 
+    def _validate_task(self, agent_id, task_data):
+        hop_count = task_data.get("hop_count", 0)
+        if hop_count > self.MAX_HANDOFFS:
+            return False, f"Maximum handoff limit exceeded ({hop_count}/{self.MAX_HANDOFFS})."
+
+        target = task_data.get("target", agent_id)
+        if target not in self.VALID_TARGETS:
+            return False, f"Invalid target '{target}'. Allowed targets: {', '.join(sorted(self.VALID_TARGETS))}."
+
+        visited = list(task_data.get("visited_targets", []))
+        if visited.count(target) >= 2:
+            return False, f"Loop detected: target '{target}' has already appeared in visited path {visited}."
+
+        if agent_id != "command" and not task_data.get("instruction"):
+            return False, "Invalid task: missing instruction for non-command agent."
+
+        return True, ""
+
     def start_mission(self, user_request):
         """총괄 지휘관(command) 에이전트를 통해 초기 계획(plan) 수립 시작"""
         initial_task = {
-            "instruction": f"Goal: {user_request}. Design tasks and plan for file, code, and doc agents. You must respect strictly sequential assignment (file -> code -> doc)."
+            "instruction": f"Goal: {user_request}. Design tasks and plan for file, code, and doc agents. You must respect strictly sequential assignment (file -> code -> doc).",
+            "hop_count": 0,
+            "visited_targets": []
         }
         self.dispatch_worker("command", initial_task)
 
     def dispatch_worker(self, agent_id, task_data):
+        if "hop_count" not in task_data:
+            task_data["hop_count"] = 0
+        if "visited_targets" not in task_data:
+            task_data["visited_targets"] = []
+
+        valid, err = self._validate_task(agent_id, task_data)
+        if not valid:
+            logger.error(f"Orchestrator: Task rejected for {agent_id}: {err}")
+            self.worker_error.emit(agent_id, f"Task rejected: {err}")
+            return
+
+        self.task_assigned.emit(agent_id, dict(task_data))
+
         # max concurrent process 검사
         if len(self.workers) >= self.max_concurrent_processors:
             self.task_queue.append((agent_id, task_data))
