@@ -136,7 +136,7 @@ class AgentLogModal(QDialog):
         super().__init__(parent)
         self.agent_id = agent_id
         self.setWindowTitle(f"{agent_id.upper()} Log")
-        self.setWindowModality(Qt.WindowModal)
+        self.setWindowModality(Qt.WindowModality.WindowModal)
         self.resize(620, 420)
         self.setStyleSheet("background:#1e272e; color:#f5f6fa; font-family: 'Segoe UI';")
 

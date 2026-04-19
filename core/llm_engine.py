@@ -93,8 +93,7 @@ class LlamaInferenceCore:
                     prompt, 
                     max_tokens=2500, 
                     stop=["<|im_end|>"], 
-                    temperature=0.1,
-                    response_format={"type": "json_object", "schema": schema}
+                    temperature=0.1
                 )
                 
                 text_output = response['choices'][0]['text'].strip()

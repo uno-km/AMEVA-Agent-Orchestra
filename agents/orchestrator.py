@@ -43,7 +43,12 @@ class Orchestrator(QObject):
     def start_mission(self, user_request):
         """총괄 지휘관(command) 에이전트를 통해 초기 계획(plan) 수립 시작"""
         initial_task = {
-            "instruction": f"Goal: {user_request}. Design tasks and plan for file, code, and doc agents. You must respect strictly sequential assignment (file -> code -> doc).",
+            "instruction": (
+                f"Goal: {user_request}. Analyze the objective and design an optimal multi-agent workflow. "
+                "You are not restricted to any fixed sequence. You may choose to find existing files, "
+                "modify code, summarize documents, or create new assets as needed. "
+                "Assign tasks to file, code, or doc agents in the most logical order to achieve the goal efficiently."
+            ),
             "hop_count": 0,
             "visited_targets": []
         }
