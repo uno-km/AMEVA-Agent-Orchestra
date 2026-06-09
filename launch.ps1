@@ -67,11 +67,11 @@ if ($hasNvidia) {
 # [1] Prepare Workspace and Model Directory
 # ==========================================
 Write-Section "[1/6] Preparing workspace directories..."
-$ModelDir = Join-Path $ScriptPath "model"
+$ModelDir = "C:\ameva\llm"
 $EnvDir = Join-Path $ScriptPath "ameva_orchestra_env"
 
 if (-Not (Test-Path $ModelDir)) {
-    New-Item -ItemType Directory -Path $ModelDir | Out-Null
+    New-Item -ItemType Directory -Path $ModelDir -Force | Out-Null
     Write-Host "=> Created model directory: $ModelDir" -ForegroundColor Green
 } else {
     Write-Host "=> Model directory exists: $ModelDir" -ForegroundColor Green
