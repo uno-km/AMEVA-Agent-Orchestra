@@ -451,7 +451,7 @@ def main():
         logger.info("SYSTEM: Web Operations Console 가동 준비 완료.")
 
     try:
-        uvicorn.run(app, host="0.0.0.0", port=8050, log_level="info")
+        uvicorn.run(app, host="0.0.0.0", port=9000, log_level="info")
     finally:
         # Tear down watcher safely
         watcher_observer.stop()
