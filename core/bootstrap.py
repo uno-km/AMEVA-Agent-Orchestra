@@ -2,7 +2,7 @@ import os
 import time
 import GPUtil
 import psutil
-from PyQt6.QtCore import QThread, pyqtSignal
+import threading
 import urllib.request
 from .config import MODEL_DIR, AVAILABLE_MODELS
 import logging
@@ -50,19 +50,26 @@ class HardwareProfiler:
         recommended.sort(key=lambda x: (not x["is_installed"], not x["recommended"]))
         return recommended
 
-class ModelDownloader(QThread):
-    progress = pyqtSignal(int)
-    log_signal = pyqtSignal(str)
-    finished_signal = pyqtSignal(bool, str)
-
-    def __init__(self, url, filename):
+class ModelDownloader(threading.Thread):
+    def __init__(self, url, filename, progress_callback=None, log_callback=None, finished_callback=None):
         super().__init__()
         self.url = url
         self.filepath = os.path.join(MODEL_DIR, filename)
+        self.progress_callback = progress_callback
+        self.log_callback = log_callback
+        self.finished_callback = finished_callback
+        self._stop_event = threading.Event()
+
+    def requestInterruption(self):
+        self._stop_event.set()
+
+    def isInterruptionRequested(self):
+        return self._stop_event.is_set()
 
     def run(self):
         try:
-            self.log_signal.emit(f"다운로드 시작: {os.path.basename(self.filepath)}")
+            if self.log_callback:
+                self.log_callback(f"다운로드 시작: {os.path.basename(self.filepath)}")
             req = urllib.request.Request(self.url, headers={'User-Agent': 'Mozilla/5.0'})
             
             with urllib.request.urlopen(req) as response:
@@ -73,8 +80,10 @@ class ModelDownloader(QThread):
                 with open(self.filepath, 'wb') as f:
                     while True:
                         if self.isInterruptionRequested():
-                            self.log_signal.emit("다운로드 취소됨.")
-                            self.finished_signal.emit(False, "Canceled")
+                            if self.log_callback:
+                                self.log_callback("다운로드 취소됨.")
+                            if self.finished_callback:
+                                self.finished_callback(False, "Canceled")
                             return
                             
                         buffer = response.read(block_size)
@@ -85,14 +94,24 @@ class ModelDownloader(QThread):
                         
                         if total_size > 0:
                             percent = int((downloaded / total_size) * 100)
-                            self.progress.emit(percent)
+                            if self.progress_callback:
+                                self.progress_callback(percent)
                             
-            self.progress.emit(100)
-            self.log_signal.emit("다운로드 및 검증 완료.")
-            self.finished_signal.emit(True, self.filepath)
+            if self.progress_callback:
+                self.progress_callback(100)
+            if self.log_callback:
+                self.log_callback("다운로드 및 검증 완료.")
+            if self.finished_callback:
+                self.finished_callback(True, self.filepath)
             
         except Exception as e:
-            self.log_signal.emit(f"다운로드 실패: {e}")
+            if self.log_callback:
+                self.log_callback(f"다운로드 실패: {e}")
             if os.path.exists(self.filepath):
-                os.remove(self.filepath)
-            self.finished_signal.emit(False, str(e))
+                try:
+                    os.remove(self.filepath)
+                except:
+                    pass
+            if self.finished_callback:
+                self.finished_callback(False, str(e))
+

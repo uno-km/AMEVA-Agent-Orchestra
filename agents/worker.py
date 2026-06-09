@@ -1,8 +1,8 @@
 import os
 import time
 import traceback
+import threading
 from datetime import datetime
-from PyQt6.QtCore import QThread, pyqtSignal
 
 from core.llm_engine import LlamaInferenceCore
 from core.sre import logger
@@ -11,17 +11,23 @@ from core.security import enforce_sandbox
 from core.parser import StrictParser
 from agents.schemas import ARCHITECT_SCHEMA, WORKER_SCHEMA
 
-class AgentWorker(QThread):
-    finished_task = pyqtSignal(str, dict, dict, dict) # agent_id, result_json, next_task, usage
-    error_signal = pyqtSignal(str, str)
-    
-    def __init__(self, agent_id, role_prompt, task_data):
+class AgentWorker(threading.Thread):
+    def __init__(self, agent_id, role_prompt, task_data, on_done=None, on_fail=None):
         super().__init__()
         self.agent_id = agent_id
         self.role_prompt = role_prompt
         self.task_data = task_data
+        self.on_done = on_done
+        self.on_fail = on_fail
         self.heartbeat = time.time()
         self.llm_core = LlamaInferenceCore.get_instance()
+        self._stop_event = threading.Event()
+
+    def requestInterruption(self):
+        self._stop_event.set()
+
+    def isInterruptionRequested(self):
+        return self._stop_event.is_set()
 
     def run(self):
         try:
@@ -76,11 +82,13 @@ class AgentWorker(QThread):
                 next_task["hop_count"] = self.task_data.get("hop_count", 0) + 1
                 next_task["visited_targets"] = list(self.task_data.get("visited_targets", [])) + [self.agent_id]
 
-            self.finished_task.emit(self.agent_id, result_json, next_task if next_task else {}, usage)
+            if self.on_done:
+                self.on_done(self.agent_id, result_json, next_task if next_task else {}, usage)
             
         except Exception as e:
             logger.error(f"WORKER FATAL [{self.agent_id}]: {traceback.format_exc()}")
-            self.error_signal.emit(self.agent_id, f"워커 치명적 오류: {str(e)}")
+            if self.on_fail:
+                self.on_fail(self.agent_id, f"워커 치명적 오류: {str(e)}")
 
     def read_memory(self):
         p = os.path.join(MEMORY_DIR, f"{self.agent_id}_memory.md")

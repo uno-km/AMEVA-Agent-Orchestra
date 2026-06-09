@@ -1,23 +1,30 @@
-from PyQt6.QtCore import QObject, pyqtSignal
 from agents.worker import AgentWorker
 from agents.schemas import PROMPTS
 from core.sre import logger
 
-class Orchestrator(QObject):
-    worker_started = pyqtSignal(str) # agent_id
-    task_assigned = pyqtSignal(str, dict) # agent_id, task_data
-    worker_finished = pyqtSignal(str, dict, dict) # agent_id, result_json, usage
-    worker_error = pyqtSignal(str, str) # agent_id, error
-    handoff_triggered = pyqtSignal(str, str, dict) # from_id, to_id, next_task
-
+class Orchestrator:
     VALID_TARGETS = {"command", "secretary", "file", "code", "doc"}
     MAX_HANDOFFS = 12
 
     def __init__(self):
-        super().__init__()
         self.workers = {}
         self.max_concurrent_processors = 1
         self.task_queue = [] # For concurrent execution holding
+        self.event_callbacks = [] # list of callbacks: callback(event_type, *args)
+
+    def register_callback(self, callback):
+        self.event_callbacks.append(callback)
+
+    def unregister_callback(self, callback):
+        if callback in self.event_callbacks:
+            self.event_callbacks.remove(callback)
+
+    def emit_event(self, event_type, *args):
+        for callback in self.event_callbacks:
+            try:
+                callback(event_type, *args)
+            except Exception as e:
+                logger.error(f"Callback error in Orchestrator event: {e}")
 
     def set_max_processors(self, max_proc):
         self.max_concurrent_processors = max_proc
@@ -63,38 +70,41 @@ class Orchestrator(QObject):
         valid, err = self._validate_task(agent_id, task_data)
         if not valid:
             logger.error(f"Orchestrator: Task rejected for {agent_id}: {err}")
-            self.worker_error.emit(agent_id, f"Task rejected: {err}")
+            self.emit_event("worker_error", agent_id, f"Task rejected: {err}")
             return
 
-        self.task_assigned.emit(agent_id, dict(task_data))
+        self.emit_event("task_assigned", agent_id, dict(task_data))
 
         # max concurrent process 검사
         if len(self.workers) >= self.max_concurrent_processors:
             self.task_queue.append((agent_id, task_data))
             return
 
-        if agent_id in self.workers and self.workers[agent_id].isRunning():
+        if agent_id in self.workers and self.workers[agent_id].is_alive():
             logger.warning(f"Orchestrator: Agent {agent_id} is already running.")
             return
 
-        w = AgentWorker(agent_id, PROMPTS[agent_id], task_data)
-        w.finished_task.connect(self.on_worker_done)
-        w.error_signal.connect(self.on_worker_fail)
-        
+        w = AgentWorker(
+            agent_id=agent_id,
+            role_prompt=PROMPTS[agent_id],
+            task_data=task_data,
+            on_done=self.on_worker_done,
+            on_fail=self.on_worker_fail
+        )
         self.workers[agent_id] = w
-        self.worker_started.emit(agent_id)
+        self.emit_event("worker_started", agent_id)
         w.start()
 
     def on_worker_done(self, agent_id, result_json, next_task, usage):
         if agent_id in self.workers:
             del self.workers[agent_id]
 
-        self.worker_finished.emit(agent_id, result_json, usage)
+        self.emit_event("worker_finished", agent_id, result_json, usage)
 
-        # 다음 태스크가 있다면 시그널 발송 -> UI 측에서 픽업 후 애니메이션 -> dispatch
+        # 다음 태스크가 있다면 시그널 발송 -> 웹 UI 브로드캐스트
         if next_task and "target" in next_task:
             target_id = next_task["target"]
-            self.handoff_triggered.emit(agent_id, target_id, next_task)
+            self.emit_event("handoff_triggered", agent_id, target_id, next_task)
 
         # 큐에 남은 작업이 있고 동시성 레벨이 허락하면 실행
         self._process_queue()
@@ -102,7 +112,7 @@ class Orchestrator(QObject):
     def on_worker_fail(self, agent_id, err_msg):
         if agent_id in self.workers:
             del self.workers[agent_id]
-        self.worker_error.emit(agent_id, err_msg)
+        self.emit_event("worker_error", agent_id, err_msg)
         self._process_queue()
 
     def _process_queue(self):
@@ -113,8 +123,5 @@ class Orchestrator(QObject):
     def shutdown_all(self):
         for aid, w in list(self.workers.items()):
             w.requestInterruption()
-            w.quit()
-            w.wait(2000)
-            if w.isRunning():
-                w.terminate()
+            w.join(2.0)
         self.workers.clear()

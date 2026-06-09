@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMEVA Agent Orchestra - Enterprise Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div id="app-container">
+        <!-- 메인 탑 바 -->
+        <header id="main-header">
+            <div class="logo-area">
+                <span class="logo-icon">🏢</span>
+                <h1>AMEVA AGENT OPERATIONS BOARD</h1>
+            </div>
+            <div class="header-controls">
+                <label for="concurrency-select">Max Concurrent Processors:</label>
+                <select id="concurrency-select">
+                    <option value="1" selected>1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                </select>
+                <button id="btn-stop-all" class="btn-danger">🛑 Stop All Tasks</button>
+                <button id="btn-show-model-settings" class="btn-secondary">⚙️ LLM Model</button>
+            </div>
+        </header>
+
+        <!-- 메인 콘텐츠 영역 -->
+        <main id="main-content">
+            <!-- 좌측 패널 (작업 지휘 및 에이전트 보드) -->
+            <section id="left-panel">
+                <!-- 에이전트 오피스 보드 -->
+                <div id="office-board">
+                    <!-- SVG 연결선들을 그릴 오버레이 -->
+                    <svg id="handoff-overlay"></svg>
+                    
+                    <!-- 5개의 에이전트 카드 -->
+                    <div class="agent-card" id="agent-command" data-rank="noble">
+                        <div class="agent-emoji">🐶</div>
+                        <div class="agent-name">COMMAND</div>
+                        <div class="agent-status">💤 Standby</div>
+                        <div class="agent-task">Task: None</div>
+                        <div class="agent-passed">Received: None</div>
+                        <div class="agent-runtime">Elapsed: 0s</div>
+                        <div class="agent-tokens">P:0 / C:0</div>
+                        <div class="agent-progress"><div class="progress-bar-inner"></div></div>
+                        <button class="btn-details" onclick="openAgentLog('command')">Details</button>
+                    </div>
+
+                    <div class="agent-card" id="agent-secretary" data-rank="noble">
+                        <div class="agent-emoji">🎩</div>
+                        <div class="agent-name">SECRETARY</div>
+                        <div class="agent-status">💤 Standby</div>
+                        <div class="agent-task">Task: None</div>
+                        <div class="agent-passed">Received: None</div>
+                        <div class="agent-runtime">Elapsed: 0s</div>
+                        <div class="agent-tokens">P:0 / C:0</div>
+                        <div class="agent-progress"><div class="progress-bar-inner"></div></div>
+                        <button class="btn-details" onclick="openAgentLog('secretary')">Details</button>
+                    </div>
+
+                    <div class="agent-card" id="agent-file" data-rank="dev">
+                        <div class="agent-emoji">🐹</div>
+                        <div class="agent-name">FILE MANAGER</div>
+                        <div class="agent-status">💤 Standby</div>
+                        <div class="agent-task">Task: None</div>
+                        <div class="agent-passed">Received: None</div>
+                        <div class="agent-runtime">Elapsed: 0s</div>
+                        <div class="agent-tokens">P:0 / C:0</div>
+                        <div class="agent-progress"><div class="progress-bar-inner"></div></div>
+                        <button class="btn-details" onclick="openAgentLog('file')">Details</button>
+                    </div>
+
+                    <div class="agent-card" id="agent-code" data-rank="dev">
+                        <div class="agent-emoji">🦊</div>
+                        <div class="agent-name">SR. DEVELOPER</div>
+                        <div class="agent-status">💤 Standby</div>
+                        <div class="agent-task">Task: None</div>
+                        <div class="agent-passed">Received: None</div>
+                        <div class="agent-runtime">Elapsed: 0s</div>
+                        <div class="agent-tokens">P:0 / C:0</div>
+                        <div class="agent-progress"><div class="progress-bar-inner"></div></div>
+                        <button class="btn-details" onclick="openAgentLog('code')">Details</button>
+                    </div>
+
+                    <div class="agent-card" id="agent-doc" data-rank="writer">
+                        <div class="agent-emoji">🐻</div>
+                        <div class="agent-name">TECH WRITER</div>
+                        <div class="agent-status">💤 Standby</div>
+                        <div class="agent-task">Task: None</div>
+                        <div class="agent-passed">Received: None</div>
+                        <div class="agent-runtime">Elapsed: 0s</div>
+                        <div class="agent-tokens">P:0 / C:0</div>
+                        <div class="agent-progress"><div class="progress-bar-inner"></div></div>
+                        <button class="btn-details" onclick="openAgentLog('doc')">Details</button>
+                    </div>
+                </div>
+
+                <!-- 명령 입력 영역 -->
+                <div id="command-input-area">
+                    <input type="text" id="chat-input" placeholder="오케스트라 가동 지시를 여기에 입력하십시오 (예: PyQt를 이용한 가계부 프로그램 작성)...">
+                    <button id="btn-send-command">⚡ 지휘 개시</button>
+                </div>
+
+                <!-- 시스템 로그 영역 -->
+                <div id="log-section">
+                    <div class="section-title">🖥️ SYSTEM TRACE LOG</div>
+                    <div id="trace-log-view" class="terminal-view"></div>
+                </div>
+            </section>
+
+            <!-- 우측 패널 (SRE 감시 및 영속 기억장치) -->
+            <section id="right-panel">
+                <div class="section-title">📈 REAL-TIME INFRA RESOURCES</div>
+                <div id="resource-graph-container">
+                    <canvas id="resourceCanvas" width="500" height="200"></canvas>
+                    <div class="legend-area">
+                        <span style="color:#e67e22">■ CPU</span>
+                        <span style="color:#3498db">■ RAM</span>
+                        <span style="color:#2ecc71">■ GPU</span>
+                    </div>
+                </div>
+                <div id="resource-status-text">CPU: 0% | RAM: 0% | GPU: 0%</div>
+
+                <div class="section-title">🚨 WATCHDOG & SRE EVENTS</div>
+                <div id="sre-trace-view" class="terminal-view-yellow"></div>
+
+                <div class="section-title">📂 PERSISTENT MEMORY ASSETS</div>
+                <div id="memory-list-container">
+                    <ul id="memory-list"></ul>
+                </div>
+                <div id="memory-viewer-container">
+                    <pre id="memory-view-content">기억 자산을 선택하여 내용을 확인하십시오.</pre>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 모델 다운로드 및 선택 부팅 모달 -->
+    <div id="model-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>🖥️ AMEVA Startup & Model Selection</h2>
+            <div id="hardware-specs-box">
+                <strong>Hardware profiling specs:</strong>
+                <p id="specs-text">Scanning hardware...</p>
+            </div>
+            
+            <h3>📌 Available Models</h3>
+            <div id="model-selection-list">
+                <div class="loading-spinner">목록 로딩 중...</div>
+            </div>
+
+            <!-- 다운로드 진행 패널 -->
+            <div id="download-progress-panel" style="display: none;">
+                <h4 id="download-status-label">Downloading Model...</h4>
+                <div class="progress-bar-wrapper">
+                    <div id="download-progress-inner" class="progress-bar-inner" style="width: 0%;"></div>
+                </div>
+                <span id="download-percentage">0%</span>
+            </div>
+
+            <div class="modal-footer">
+                <button id="btn-close-modal" class="btn-secondary">Close Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 에이전트 상세 로그 팝업 모달 -->
+    <div id="agent-log-modal" class="modal-overlay">
+        <div class="modal-content log-modal-content">
+            <h2 id="agent-modal-title">AGENT LOG</h2>
+            <div id="agent-modal-logs" class="agent-log-terminal"></div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeAgentLogModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS Scripts -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,670 @@
+/* General System CSS Setup */
+:root {
+    --bg-primary: #1e272e;
+    --bg-secondary: #2f3640;
+    --bg-board: #353b48;
+    --border-color: #7f8fa6;
+    --text-primary: #f5f6fa;
+    --text-secondary: #dcdde1;
+    --accent-blue: #0984e3;
+    --accent-red: #d63031;
+    --accent-green: #2ecc71;
+    --accent-orange: #e67e22;
+    --accent-yellow: #f1c40f;
+    --glass-bg: rgba(47, 54, 64, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.08);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+}
+
+#app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Header Section */
+#main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    background: rgba(30, 39, 46, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--glass-border);
+    z-index: 100;
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo-icon {
+    font-size: 24px;
+}
+
+.logo-area h1 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    background: linear-gradient(135deg, #fbc531, #f5f6fa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.header-controls label {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+select {
+    background: #1e272e;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 8px 12px;
+    border-radius: 6px;
+    outline: none;
+    cursor: pointer;
+}
+
+button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background-color: var(--accent-blue);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #00a8ff;
+    box-shadow: 0 0 10px rgba(9, 132, 227, 0.4);
+}
+
+.btn-secondary {
+    background-color: #353b48;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background-color: #47536e;
+}
+
+.btn-danger {
+    background-color: var(--accent-red);
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #ff7675;
+    box-shadow: 0 0 10px rgba(214, 48, 49, 0.4);
+}
+
+/* Main Dashboard Panel */
+#main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    padding: 20px;
+    gap: 20px;
+}
+
+#left-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 2;
+    gap: 20px;
+    min-width: 0; /* allows flex item to shrink below content width */
+}
+
+#right-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 15px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 20px;
+    overflow-y: auto;
+    min-width: 320px;
+}
+
+.section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fbc531;
+    margin-bottom: 5px;
+    letter-spacing: 0.5px;
+}
+
+/* Agent Office Board */
+#office-board {
+    position: relative;
+    background-color: var(--bg-board);
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    height: 520px;
+    width: 100%;
+    min-width: 1050px;
+    overflow: hidden;
+}
+
+#handoff-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.agent-card {
+    position: absolute;
+    width: 180px;
+    height: 230px;
+    border-radius: 15px;
+    border: 2px solid #222f3e;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    z-index: 10;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    color: white;
+}
+
+/* Hover scales up and adds glow */
+.agent-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+    z-index: 15;
+}
+
+/* Specific Positions matches PyQt layout in 1100x600 coordinate plane */
+#agent-command {
+    left: 200px;
+    top: 30px;
+}
+#agent-secretary {
+    left: 650px;
+    top: 30px;
+}
+#agent-file {
+    left: 70px;
+    top: 270px;
+}
+#agent-code {
+    left: 420px;
+    top: 270px;
+}
+#agent-doc {
+    left: 770px;
+    top: 270px;
+}
+
+/* Card Themes */
+.agent-card[data-rank="noble"] {
+    background: linear-gradient(135deg, #e67e22, #f39c12);
+}
+.agent-card[data-rank="dev"] {
+    background: linear-gradient(135deg, #1e3799, #2980b9);
+}
+.agent-card[data-rank="writer"] {
+    background: linear-gradient(135deg, #079992, #1abc9c);
+}
+
+/* Working card styles */
+.agent-card.working {
+    background: linear-gradient(135deg, #c0392b, #e74c3c) !important;
+    border: 3px solid #ff7675;
+    animation: card-pulse 1.5s infinite alternate;
+}
+
+@keyframes card-pulse {
+    from {
+        box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+    }
+    to {
+        box-shadow: 0 0 25px rgba(231, 76, 60, 0.9);
+    }
+}
+
+/* Bounce animation for handoffs */
+.agent-card.bounce-target {
+    animation: target-bounce 0.8s ease-out;
+}
+
+@keyframes target-bounce {
+    0%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-20px); }
+    50% { transform: translateY(5px); }
+    70% { transform: translateY(-5px); }
+}
+
+/* Card details */
+.agent-emoji {
+    font-size: 36px;
+}
+
+.agent-name {
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+}
+
+.agent-status {
+    font-size: 10px;
+    opacity: 0.85;
+}
+
+.agent-task, .agent-passed {
+    font-size: 9px;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.agent-runtime, .agent-tokens {
+    font-size: 9px;
+    font-family: 'Roboto Mono', monospace;
+    opacity: 0.9;
+}
+
+.btn-details {
+    margin-top: auto;
+    width: 100%;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    border-radius: 6px;
+    font-size: 10px;
+    padding: 4px;
+    text-align: center;
+    border: none;
+    font-weight: normal;
+}
+
+.btn-details:hover {
+    background: rgba(0,0,0,0.8);
+}
+
+/* ProgressBar for Agent cards */
+.agent-progress {
+    width: 100%;
+    height: 6px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 3px;
+    overflow: hidden;
+    display: none;
+}
+
+.agent-card.working .agent-progress {
+    display: block;
+}
+
+.progress-bar-inner {
+    height: 100%;
+    width: 100%;
+    background-color: var(--accent-green);
+    border-radius: 3px;
+    animation: bar-glow 1.5s linear infinite alternate;
+}
+
+@keyframes bar-glow {
+    from { background-color: #2ecc71; }
+    to { background-color: #27ae60; }
+}
+
+/* Command Input Bar */
+#command-input-area {
+    display: flex;
+    gap: 15px;
+}
+
+#chat-input {
+    flex: 1;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 16px 20px;
+    border-radius: 10px;
+    outline: none;
+    font-size: 14px;
+    transition: border 0.2s ease;
+}
+
+#chat-input:focus {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 10px rgba(9, 132, 227, 0.2);
+}
+
+#btn-send-command {
+    background-color: var(--accent-blue);
+    color: white;
+    padding: 16px 30px;
+    font-weight: 700;
+    border-radius: 10px;
+    border: none;
+    font-size: 14px;
+}
+
+#btn-send-command:hover {
+    background-color: #00a8ff;
+    box-shadow: 0 0 15px rgba(9, 132, 227, 0.4);
+}
+
+/* Terminal Log Sections */
+#log-section {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 120px;
+}
+
+.terminal-view {
+    flex: 1;
+    background-color: #1e272e;
+    color: #4cd137;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 12px;
+    padding: 15px;
+    border-radius: 10px;
+    overflow-y: auto;
+    border: 1px solid var(--glass-border);
+    white-space: pre-wrap;
+    line-height: 1.5;
+}
+
+.terminal-view-yellow {
+    height: 150px;
+    background-color: #1e272e;
+    color: #fbc531;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 12px;
+    padding: 15px;
+    border-radius: 10px;
+    overflow-y: auto;
+    border: 1px solid var(--glass-border);
+    white-space: pre-wrap;
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+
+/* Infrastructure Resource Chart Container */
+#resource-graph-container {
+    background-color: #1e272e;
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 1px solid var(--glass-border);
+}
+
+#resourceCanvas {
+    width: 100%;
+    height: 120px;
+}
+
+.legend-area {
+    display: flex;
+    gap: 15px;
+    margin-top: 5px;
+    font-size: 11px;
+}
+
+#resource-status-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-top: 5px;
+    margin-bottom: 10px;
+    font-family: 'Roboto Mono', monospace;
+}
+
+/* Memory Vault list & viewer */
+#memory-list-container {
+    height: 120px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--bg-board);
+    overflow-y: auto;
+}
+
+#memory-list {
+    list-style: none;
+}
+
+#memory-list li {
+    padding: 8px 15px;
+    border-bottom: 1px solid var(--glass-border);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+#memory-list li:hover {
+    background-color: rgba(255,255,255,0.05);
+}
+
+#memory-list li.selected {
+    background-color: var(--accent-blue);
+    color: white;
+}
+
+#memory-viewer-container {
+    flex: 1;
+    min-height: 120px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    overflow-y: auto;
+}
+
+#memory-view-content {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-family: 'Roboto Mono', monospace;
+    white-space: pre-wrap;
+}
+
+/* Modal Overlay Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.75);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.modal-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.modal-content {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 25px;
+    width: 550px;
+    max-width: 90vw;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.log-modal-content {
+    width: 750px;
+    height: 520px;
+}
+
+.modal-content h2 {
+    font-size: 18px;
+    color: var(--accent-yellow);
+    border-bottom: 1px solid var(--glass-border);
+    padding-bottom: 10px;
+}
+
+#hardware-specs-box {
+    background: var(--bg-secondary);
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+#model-selection-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.model-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-board);
+    padding: 10px 15px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.model-name {
+    font-weight: 600;
+}
+
+.model-item button {
+    padding: 6px 12px;
+    font-size: 11px;
+}
+
+/* Modal Download Progress Box */
+#download-progress-panel {
+    background: var(--bg-secondary);
+    padding: 15px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#download-status-label {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.progress-bar-wrapper {
+    width: 100%;
+    height: 10px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+#download-progress-inner {
+    height: 100%;
+    background-color: var(--accent-green);
+    border-radius: 5px;
+    transition: width 0.1s ease;
+}
+
+#download-percentage {
+    align-self: flex-end;
+    font-size: 11px;
+    font-family: 'Roboto Mono', monospace;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+
+.agent-log-terminal {
+    flex: 1;
+    background: #121f2f;
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 15px;
+    overflow-y: auto;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 15px;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+/* Glowing connections in handoffs */
+.glowing-line {
+    stroke-dasharray: 8;
+    animation: dash 2s linear infinite, glow-pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes dash {
+    to {
+        stroke-dashoffset: -40;
+    }
+}
+
+@keyframes glow-pulse {
+    from { filter: drop-shadow(0 0 1px #0984e3); }
+    to { filter: drop-shadow(0 0 6px #0984e3); }
+}
