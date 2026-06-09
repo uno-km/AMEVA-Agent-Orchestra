@@ -113,16 +113,15 @@ GPU 가속을 위해 하드웨어 아키텍처에 맞는 CUDA Toolkit을 설치�
 
 ```Bash
 # 가상환경 생성 및 활성화
-python -m venv ameva_env
-.\ameva_env\Scripts\activate
+python -m venv ameva_orchestra_env
+.\ameva_orchestra_env\Scripts\activate
 # 기본 패키지 설치
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 #### Step 4. LLM 모델 준비
 * Qwen1.5-1.8B-Chat-GGUF (q4_k_m) 모델을 다운로드합니다.
-
-* 다운로드한 파일을 qwen.gguf로 이름을 변경하여 프로젝트 루트 디렉토리에 위치시킵니다.
+* 다운로드한 파일을 `qwen.gguf`로 이름을 변경하여 `C:\ameva\models\llm\` 디렉토리에 위치시킵니다 (해당 디렉토리가 없으면 자동 생성됩니다).
 
 #### Step 5. GPU 가속 Llama-CPP 강제 컴파일
 환경변수 적용 상태에서 CUDA 가속을 활성화하여 엔진을 빌드합니다. (PowerShell 기준)
@@ -138,11 +137,10 @@ pip install llama-cpp-python --no-cache-dir --force-reinstall --upgrade
 ```Bash
 python code_god_enterprise.py
 ```
-1.  **지휘 명령 입력**: UI 좌측 상단의 입력창에 목표(예: PyQt를 이용한 계산기 앱 작성)를 입력하고 [⚡ 지휘 개시] 버튼을 클릭합니다.
-
-2. **실시간 관제** : 우측 패널의 SRE 모니터링 그래프(CPU/RAM/GPU) 및 Watchdog 트레이스 로그를 통해 파이프라인 진행 및 시스템 부하 상태를 확인합니다.
-
-3. **산출물 확인** : 생성된 파일은 CodeGod_Workspace 폴더에, 각 에이전트의 수행 이력은 CodeGod_Memory 폴더에 마크다운 형태로 영속 저장됩니다.
+1. **웹 브라우저 접속**: 브라우저를 열고 `http://localhost:9000/?admin=true` 로 접속합니다. (관람 전용 모드는 `http://localhost:9000/` 입니다.)
+2. **지휘 명령 입력**: 화면 좌측 하단의 입력창에 목표(예: 가계부 프로그램 작성)를 입력하고 [⚡ 지휘 개시] 버튼을 클릭합니다.
+3. **실시간 관제**: 우측 패널의 SRE 모니터링 그래프(CPU/RAM/GPU) 및 Watchdog 트레이스 로그를 통해 파이프라인 진행 및 시스템 부하 상태를 확인합니다.
+4. **산출물 확인**: 생성된 파일은 `CodeGod_Workspace` 폴더에, 각 에이전트의 수행 이력은 `CodeGod_Memory` 폴더에 마크다운 형태로 영속 저장됩니다.
 
 ## 5. Troubleshooting / FAQ
 * Q. GPU 가동률이 0%로 나옵니다.

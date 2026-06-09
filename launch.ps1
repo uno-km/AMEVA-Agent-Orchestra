@@ -67,7 +67,7 @@ if ($hasNvidia) {
 # [1] Prepare Workspace and Model Directory
 # ==========================================
 Write-Section "[1/6] Preparing workspace directories..."
-$ModelDir = "C:\ameva\llm"
+$ModelDir = "C:\ameva\models\llm"
 $EnvDir = Join-Path $ScriptPath "ameva_orchestra_env"
 
 if (-Not (Test-Path $ModelDir)) {

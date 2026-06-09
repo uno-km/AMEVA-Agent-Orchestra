@@ -10,7 +10,7 @@ MEMORY_DIR = os.path.join(BASE_DIR, "CodeGod_Memory")
 ALLOWED_EXTENSIONS = ('.py', '.md', '.txt', '.js', '.html', '.json', '.css', '.yaml', '.yml', '.json')
 
 # 기본 모델 저장 위치 및 다운로드 가능 모델 설정
-MODEL_DIR = "C:/ameva/llm"
+MODEL_DIR = "C:/ameva/models/llm"
 
 AVAILABLE_MODELS = [
     {
