@@ -157,7 +157,7 @@ if ($llamaCheck -match "False") {
 Write-Section "[5/6] Validating installation..."
 $pythonExe = "$EnvDir\Scripts\python.exe"
 try {
-    & $pythonExe -c "import PyQt6, psutil, GPUtil, watchdog, llama_cpp" | Out-Null
+    & $pythonExe -c "import psutil, GPUtil, watchdog, llama_cpp" | Out-Null
     Write-Host "=> Dependency check passed." -ForegroundColor Green
 } catch {
     Write-Host "[Error] 일부 의존성 로드에 실패했습니다: $_" -ForegroundColor Red

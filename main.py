@@ -247,8 +247,18 @@ async def list_models():
     models = HardwareProfiler.recommend_models()
     return {"models": models}
 
+def check_admin(request: Request) -> bool:
+    referer = request.headers.get("referer", "")
+    if "admin=true" in referer:
+        return True
+    if request.query_params.get("admin") == "true":
+        return True
+    return False
+
 @app.post("/api/select_model")
 async def select_model(request: Request):
+    if not check_admin(request):
+        return {"status": "error", "message": "권한이 없습니다. (관람 전용 모드)"}
     data = await request.json()
     model_id = data.get("model_id")
     
@@ -281,6 +291,8 @@ async def select_model(request: Request):
 
 @app.post("/api/install_model")
 async def install_model(request: Request):
+    if not check_admin(request):
+        return {"status": "error", "message": "권한이 없습니다. (관람 전용 모드)"}
     global active_download, active_download_progress, active_download_status
     if active_download and active_download.is_alive():
         return {"status": "error", "message": "Download already in progress"}
@@ -328,6 +340,7 @@ async def install_model(request: Request):
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     engine = LlamaInferenceCore.get_instance()
+    is_admin = websocket.query_params.get("admin") == "true"
     
     # Calculate current state package (Restoration Session)
     init_state = {
@@ -359,18 +372,43 @@ async def websocket_endpoint(websocket: WebSocket):
             m_type = data.get("type")
             
             if m_type == "start_mission":
+                if not is_admin:
+                    await websocket.send_json({
+                        "type": "trace_log",
+                        "message": f"[{datetime.now().strftime('%H:%M:%S')}] [WARN] 권한 오류: 관람 전용 모드에서는 명령을 내릴 수 없습니다.",
+                        "tokens": engine.total_tokens_used
+                    })
+                    continue
                 req = data.get("request", "").strip()
                 if req:
                     log_to_web(f"COMMANDER (Web User): {req}", "INFO")
                     orchestrator.start_mission(req)
                     
             elif m_type == "set_concurrency":
+                if not is_admin:
+                    await websocket.send_json({
+                        "type": "trace_log",
+                        "message": f"[{datetime.now().strftime('%H:%M:%S')}] [WARN] 권한 오류: 관람 전용 모드에서는 설정을 변경할 수 없습니다.",
+                        "tokens": engine.total_tokens_used
+                    })
+                    await websocket.send_json({
+                        "type": "concurrency_changed",
+                        "value": orchestrator.max_concurrent_processors
+                    })
+                    continue
                 val = int(data.get("value", 1))
                 orchestrator.set_max_processors(val)
                 log_to_web(f"Max Concurrent Processors 변경 -> {val}", "INFO")
                 await manager.broadcast({"type": "concurrency_changed", "value": val})
                 
             elif m_type == "stop_all":
+                if not is_admin:
+                    await websocket.send_json({
+                        "type": "trace_log",
+                        "message": f"[{datetime.now().strftime('%H:%M:%S')}] [WARN] 권한 오류: 관람 전용 모드에서는 중지할 수 없습니다.",
+                        "tokens": engine.total_tokens_used
+                    })
+                    continue
                 log_to_web("사용자 요청으로 전체 에이전트 작업 강제 중지...", "WARN")
                 orchestrator.shutdown_all()
                 await manager.broadcast({"type": "orchestrator_stopped"})

@@ -1,6 +1,9 @@
 // WebSocket Connection Reference
 let socket = null;
-let wsUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws';
+const urlParams = new URLSearchParams(window.location.search);
+const isAdmin = urlParams.get('admin') === 'true';
+
+let wsUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws' + (isAdmin ? '?admin=true' : '');
 let reconnectInterval = 3000;
 
 // SRE Resource Graph History data
@@ -655,3 +658,18 @@ document.getElementById('btn-close-modal').onclick = () => {
 
 // Start websocket loop
 connectWebSocket();
+
+// Enforce role-based controls (View-Only Mode)
+if (!isAdmin) {
+    const inputArea = document.getElementById('command-input-area');
+    if (inputArea) inputArea.style.display = 'none';
+    
+    const stopBtn = document.getElementById('btn-stop-all');
+    if (stopBtn) stopBtn.style.display = 'none';
+    
+    const settingsBtn = document.getElementById('btn-show-model-settings');
+    if (settingsBtn) settingsBtn.style.display = 'none';
+    
+    const concurrencySel = document.getElementById('concurrency-select');
+    if (concurrencySel) concurrencySel.disabled = true;
+}
