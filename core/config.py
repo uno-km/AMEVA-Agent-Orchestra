@@ -14,19 +14,35 @@ MODEL_DIR = "C:/ameva/models/llm"
 
 AVAILABLE_MODELS = [
     {
-        "id": "qwen_1.5_1.8b",
-        "name": "Qwen1.5 1.8B Chat (Light - 권장 RAM 8GB)",
-        "filename": "qwen1_5-1_8b-chat-q4_k_m.gguf",
-        "url": "https://huggingface.co/Qwen/Qwen1.5-1.8B-Chat-GGUF/resolve/main/qwen1_5-1_8b-chat-q4_k_m.gguf",
-        "min_ram_gb": 4,
+        "id": "qwen_2.5_3b",
+        "name": "Qwen2.5 3B Instruct (Balance - 권장 RAM 12GB)",
+        "filename": "qwen2.5-3b-instruct-q4_k_m.gguf",
+        "url": "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf",
+        "min_ram_gb": 8,
         "is_default": True
     },
     {
-        "id": "llama3_8b",
-        "name": "Llama 3 8B Instruct (Pro - 권장 RAM 16GB)",
-        "filename": "llama3-8b-instruct-q4_k_m.gguf",
-        "url": "https://huggingface.co/lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF/resolve/main/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf",
-        "min_ram_gb": 12,
+        "id": "qwen_2.5_1.5b",
+        "name": "Qwen2.5 1.5B Instruct (Light - 권장 RAM 8GB)",
+        "filename": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+        "url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+        "min_ram_gb": 4,
+        "is_default": False
+    },
+    {
+        "id": "llama3.2_1b",
+        "name": "Llama 3.2 1B (Ultra Light - 권장 RAM 4GB)",
+        "filename": "llama3.2-1b.gguf",
+        "url": "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+        "min_ram_gb": 2,
+        "is_default": False
+    },
+    {
+        "id": "qwen_2.5_0.5b",
+        "name": "Qwen2.5 0.5B (Nano - 권장 RAM 2GB)",
+        "filename": "qwen2.5-0.5b.gguf",
+        "url": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-q4_k_m.gguf",
+        "min_ram_gb": 1,
         "is_default": False
     }
 ]

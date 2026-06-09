@@ -86,24 +86,35 @@ if (-Not (Test-HuggingFaceConnectivity)) {
 }
 
 $models = @{
-    "qwen.gguf" = "https://huggingface.co/Qwen/Qwen1.5-1.8B-Chat-GGUF/resolve/main/qwen1_5-1_8b-chat-q4_k_m.gguf"
-    "qwen2.5-0.5b.gguf" = "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q8_0.gguf"
+    "qwen2.5-3b-instruct-q4_k_m.gguf" = "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf"
+    "qwen2.5-1.5b-instruct-q4_k_m.gguf" = "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
     "llama3.2-1b.gguf" = "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf"
+    "qwen2.5-0.5b.gguf" = "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-q4_k_m.gguf"
 }
 
 foreach ($name in $models.Keys) {
     $dest = Join-Path $ModelDir $name
     if (-Not (Test-Path $dest)) {
-        Download-Model -Url $models[$name] -Destination $dest | Out-Null
+        if ($name -eq "qwen2.5-1.5b-instruct-q4_k_m.gguf") {
+            Write-Host "`n[?] Qwen2.5 1.5B Instruct GGUF 모델이 없습니다." -ForegroundColor Cyan
+            $choice = Read-Host "다운로드하시겠습니까? (Y/N)"
+            if ($choice -match "^[Yy]") {
+                Download-Model -Url $models[$name] -Destination $dest | Out-Null
+            } else {
+                Write-Host "=> Qwen2.5 1.5B Instruct 다운로드를 스킵합니다." -ForegroundColor Yellow
+            }
+        } else {
+            Download-Model -Url $models[$name] -Destination $dest | Out-Null
+        }
     } else {
         Write-Host "=> 이미 존재하는 모델: $name" -ForegroundColor Green
     }
 }
 
-# 기본 로드 모델은 qwen.gguf로 유지
-$PrimaryModel = Join-Path $ModelDir "qwen2.5-0.5b.gguf"
+# 기본 로드 모델은 qwen2.5-3b-instruct-q4_k_m.gguf로 설정
+$PrimaryModel = Join-Path $ModelDir "qwen2.5-3b-instruct-q4_k_m.gguf"
 if (-Not (Test-Path $PrimaryModel)) {
-    Write-Host "[Error] 핵심 모델 qwen.gguf를 찾을 수 없습니다. 설치를 다시 시도하세요." -ForegroundColor Red
+    Write-Host "[Error] 핵심 모델을 찾을 수 없습니다. 설치를 다시 시도하세요." -ForegroundColor Red
     exit 1
 }
 
