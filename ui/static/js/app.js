@@ -106,7 +106,22 @@ function handleWebSocketMessage(data) {
             break;
             
         case 'task_assigned':
+            agentTaskPayloads[data.agent_id] = data.task_data;
+            if (currentOpenedLogAgentId === data.agent_id) {
+                const payloadBox = document.getElementById('agent-modal-payload');
+                if (payloadBox) payloadBox.innerText = JSON.stringify(data.task_data, null, 2);
+            }
             setAgentTaskData(data.agent_id, data.task_data.instruction, data.task_data.passed_result);
+            break;
+            
+        case 'llm_stream':
+            if (currentOpenedLogAgentId === data.agent_id) {
+                const logsBox = document.getElementById('agent-modal-logs');
+                if (logsBox) {
+                    logsBox.innerText += data.delta;
+                    logsBox.scrollTop = logsBox.scrollHeight;
+                }
+            }
             break;
             
         case 'worker_finished':
@@ -387,7 +402,7 @@ function stopAgentTimer(aid) {
 }
 
 function resetAllAgentCards() {
-    for (const aid of ['command', 'secretary', 'file', 'code', 'doc']) {
+    for (const aid of ['command', 'secretary', 'file', 'code', 'tester', 'doc']) {
         setAgentStatus(aid, "💤 Standby", false);
         stopAgentTimer(aid);
     }
@@ -583,6 +598,7 @@ async function selectMemoryFile(liElement, filename) {
 
 // Agent details logs popup
 let currentOpenedLogAgentId = null;
+let agentTaskPayloads = {};
 
 function openAgentLog(aid) {
     currentOpenedLogAgentId = aid;
@@ -590,16 +606,27 @@ function openAgentLog(aid) {
     modal.querySelector('#agent-modal-title').innerText = `${aid.toUpperCase()} AGENT LOGS`;
     modal.classList.add('show');
     
+    // Show JSON Payload
+    const payloadBox = document.getElementById('agent-modal-payload');
+    if (agentTaskPayloads[aid]) {
+        payloadBox.innerText = JSON.stringify(agentTaskPayloads[aid], null, 2);
+    } else {
+        payloadBox.innerText = "No active task payload.";
+    }
+
+    // Reset streaming area
+    const logsBox = document.getElementById('agent-modal-logs');
+    logsBox.innerText = "대기 중... (실시간 스트리밍은 작업이 시작되면 여기에 표시됩니다.)\n\n";
+
     // Read or ask memory file
     fetch(`/api/memory/${aid}_memory.md`)
         .then(res => res.json())
         .then(data => {
-            const logsBox = document.getElementById('agent-modal-logs');
-            logsBox.innerText = data.content || "이전 수행 기록이 아직 없습니다.";
+            logsBox.innerText += "--- [이전 수행 기록] ---\n" + (data.content || "이전 수행 기록이 아직 없습니다.");
             logsBox.scrollTop = logsBox.scrollHeight;
         })
         .catch(err => {
-            document.getElementById('agent-modal-logs').innerText = "이력을 불러오지 못했습니다.";
+            logsBox.innerText += "\n이력을 불러오지 못했습니다.";
         });
 }
 

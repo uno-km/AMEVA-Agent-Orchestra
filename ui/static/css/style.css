@@ -668,3 +668,146 @@ button {
     from { filter: drop-shadow(0 0 1px #0984e3); }
     to { filter: drop-shadow(0 0 6px #0984e3); }
 }
+
+/* ==========================================
+   Responsive UI/UX Media Queries (1200px / 768px)
+   ========================================== */
+
+/* Large Desktop only (keep scroll locked) */
+@media (min-width: 1201px) {
+    body {
+        overflow: hidden;
+    }
+}
+
+/* Tablet & Smaller Devices (1200px and below) */
+@media (max-width: 1200px) {
+    body {
+        overflow-y: auto !important;
+        height: auto !important;
+        width: 100vw;
+    }
+
+    #app-container {
+        height: auto !important;
+        min-height: 100vh;
+    }
+
+    #main-header {
+        flex-direction: column;
+        gap: 15px;
+        padding: 15px 20px;
+        align-items: center;
+        text-align: center;
+    }
+
+    .header-controls {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    #main-content {
+        flex-direction: column;
+        height: auto !important;
+        overflow: visible !important;
+        padding: 15px;
+        gap: 20px;
+    }
+
+    #left-panel {
+        flex: none !important;
+        width: 100% !important;
+    }
+
+    #right-panel {
+        flex: none !important;
+        width: 100% !important;
+        min-width: unset !important;
+        height: auto !important;
+        overflow-y: visible !important;
+    }
+
+    #office-board {
+        min-width: unset !important;
+        height: auto !important;
+        min-height: 380px;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        align-content: flex-start !important;
+        gap: 15px !important;
+        padding: 30px 20px !important;
+        overflow: visible !important;
+    }
+
+    .agent-card {
+        position: relative !important;
+        left: auto !important;
+        top: auto !important;
+        width: calc(33.333% - 10px) !important;
+        min-width: 180px !important;
+        height: 230px !important;
+        margin: 0 !important;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important;
+    }
+
+    #command-input-area {
+        flex-direction: row;
+    }
+
+    /* Modal size tweaks */
+    .modal-content {
+        width: 95vw !important;
+        max-width: 600px !important;
+    }
+
+    .log-modal-content {
+        max-width: 95vw !important;
+        width: 95vw !important;
+        height: auto !important;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+}
+
+/* Mobile Devices (768px and below) */
+@media (max-width: 768px) {
+    .agent-card {
+        width: calc(50% - 8px) !important;
+        min-width: 140px !important;
+        height: 220px !important;
+        padding: 10px !important;
+    }
+
+    .agent-emoji {
+        font-size: 28px !important;
+    }
+
+    .agent-name {
+        font-size: 11px !important;
+    }
+
+    #command-input-area {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #btn-send-command {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Fix inline flex direction in Agent Details Log Modal */
+    .log-modal-content > div[style*="display: flex"] {
+        flex-direction: column !important;
+        height: auto !important;
+        gap: 15px !important;
+    }
+
+    .agent-log-terminal {
+        height: 220px !important;
+        min-height: 200px !important;
+    }
+}
+

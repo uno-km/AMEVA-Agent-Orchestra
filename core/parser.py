@@ -11,27 +11,6 @@ class StrictParser:
     """중괄호 스택 기반의 정밀 JSON 객체 적출 및 위생 처리기"""
     
     @staticmethod
-    def extract_first_valid_json(text):
-        """
-        중괄호 스택 알고리즘을 사용하여 텍스트 내에서 첫 번째로 완결된 JSON 객체만 적출합니다.
-        LLM의 앞뒤 수다나 부연 설명을 완벽하게 무시합니다.
-        """
-        start_idx = text.find('{')
-        if start_idx == -1:
-            raise ValueError("JSON 데이터의 시작점({)을 찾을 수 없습니다.")
-            
-        stack = 0
-        for i in range(start_idx, len(text)):
-            if text[i] == '{':
-                stack += 1
-            elif text[i] == '}':
-                stack -= 1
-                if stack == 0:
-                    return text[start_idx:i+1]
-        
-        raise ValueError("JSON 중괄호 쌍이 일치하지 않아 파싱할 수 없습니다.")
-
-    @staticmethod
     def parse_response(text_output):
         clean_text = text_output.strip()
         
@@ -41,19 +20,35 @@ class StrictParser:
         except: pass
 
         # 2. 마크다운 코드 블록 우회 파싱
-        json_pattern = rf'{BT}json\s*(.*?)\s*{BT}'
-        match = re.search(json_pattern, clean_text, re.DOTALL)
-        if match:
-            try: return json.loads(match.group(1))
-            except: pass
+        for pattern in [rf'{BT}json\s*(.*?)\s*{BT}', rf'{BT}\s*({{.*?}})\s*{BT}']:
+            match = re.search(pattern, clean_text, re.DOTALL)
+            if match:
+                try: 
+                    return json.loads(match.group(1).strip())
+                except: pass
 
-        # 3. 스택 기반 최후 구출 로직 가동
-        try:
-            target_json_str = StrictParser.extract_first_valid_json(clean_text)
-            return json.loads(target_json_str)
-        except Exception as e:
-            logger.error(f"HYBRID PARSE FAILED: {str(e)}")
-            raise ValueError("유효한 JSON 구조를 식별할 수 없습니다.")
+        # 3. 텍스트 내에서 중괄호 쌍들을 차례로 매칭하며 json.loads가 성공하는 첫 객체를 탐색
+        start_pos = 0
+        while True:
+            start_idx = clean_text.find('{', start_pos)
+            if start_idx == -1:
+                break
+                
+            stack = 0
+            for i in range(start_idx, len(clean_text)):
+                if clean_text[i] == '{':
+                    stack += 1
+                elif clean_text[i] == '}':
+                    stack -= 1
+                    if stack == 0:
+                        candidate = clean_text[start_idx:i+1]
+                        try:
+                            return json.loads(candidate)
+                        except:
+                            break
+            start_pos = start_idx + 1
+            
+        raise ValueError("유효한 JSON 구조를 식별할 수 없습니다.")
 
     @staticmethod
     def sanitize_code(content, filename, agent_id):

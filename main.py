@@ -36,6 +36,7 @@ agent_states = {
     "secretary": {"status": "💤 Standby", "task": "None", "passed": "None", "elapsed": "0s", "tokens": "P:0 / C:0"},
     "file": {"status": "💤 Standby", "task": "None", "passed": "None", "elapsed": "0s", "tokens": "P:0 / C:0"},
     "code": {"status": "💤 Standby", "task": "None", "passed": "None", "elapsed": "0s", "tokens": "P:0 / C:0"},
+    "tester": {"status": "💤 Standby", "task": "None", "passed": "None", "elapsed": "0s", "tokens": "P:0 / C:0"},
     "doc": {"status": "💤 Standby", "task": "None", "passed": "None", "elapsed": "0s", "tokens": "P:0 / C:0"},
 }
 
@@ -130,6 +131,13 @@ def orchestrator_event_callback(event_type, *args):
         log_to_web(f"임무 부여 ({aid.upper()}): {instruction[:64]}...", "INFO")
         asyncio.run_coroutine_threadsafe(
             manager.broadcast({"type": "task_assigned", "agent_id": aid, "task_data": task_data}),
+            loop
+        )
+
+    elif event_type == "llm_stream":
+        aid, delta = args[0], args[1]
+        asyncio.run_coroutine_threadsafe(
+            manager.broadcast({"type": "llm_stream", "agent_id": aid, "delta": delta}),
             loop
         )
 

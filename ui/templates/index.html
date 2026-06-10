@@ -92,6 +92,18 @@
                         <button class="btn-details" onclick="openAgentLog('code')">Details</button>
                     </div>
 
+                    <div class="agent-card" id="agent-tester" data-rank="dev">
+                        <div class="agent-emoji">🛠️</div>
+                        <div class="agent-name">QA TESTER</div>
+                        <div class="agent-status">💤 Standby</div>
+                        <div class="agent-task">Task: None</div>
+                        <div class="agent-passed">Received: None</div>
+                        <div class="agent-runtime">Elapsed: 0s</div>
+                        <div class="agent-tokens">P:0 / C:0</div>
+                        <div class="agent-progress"><div class="progress-bar-inner"></div></div>
+                        <button class="btn-details" onclick="openAgentLog('tester')">Details</button>
+                    </div>
+
                     <div class="agent-card" id="agent-doc" data-rank="writer">
                         <div class="agent-emoji">🐻</div>
                         <div class="agent-name">TECH WRITER</div>
@@ -176,10 +188,21 @@
 
     <!-- 에이전트 상세 로그 팝업 모달 -->
     <div id="agent-log-modal" class="modal-overlay">
-        <div class="modal-content log-modal-content">
+        <div class="modal-content log-modal-content" style="max-width: 90vw; width: 1200px;">
             <h2 id="agent-modal-title">AGENT LOG</h2>
-            <div id="agent-modal-logs" class="agent-log-terminal"></div>
-            <div class="modal-footer">
+            <div style="display: flex; gap: 20px; height: 60vh;">
+                <!-- JSON Payload Viewer -->
+                <div style="flex: 1; display: flex; flex-direction: column;">
+                    <h3>Task Payload (JSON)</h3>
+                    <pre id="agent-modal-payload" class="agent-log-terminal" style="flex: 1; margin: 0; white-space: pre-wrap; word-wrap: break-word;"></pre>
+                </div>
+                <!-- Streaming Logs Viewer -->
+                <div style="flex: 1; display: flex; flex-direction: column;">
+                    <h3>LLM Streaming Output</h3>
+                    <div id="agent-modal-logs" class="agent-log-terminal" style="flex: 1; margin: 0; white-space: pre-wrap; word-wrap: break-word;"></div>
+                </div>
+            </div>
+            <div class="modal-footer" style="margin-top: 15px;">
                 <button class="btn-secondary" onclick="closeAgentLogModal()">Close</button>
             </div>
         </div>

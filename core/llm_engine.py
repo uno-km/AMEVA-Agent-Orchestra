@@ -81,7 +81,7 @@ class LlamaInferenceCore:
             except: self.cached_gpu_load = 0
         return self.cached_gpu_load
 
-    def generate(self, system_p, user_p, schema):
+    def generate(self, system_p, user_p, schema, stream_callback=None):
         if not self.is_loaded or not self.llm:
             return {"status": 503, "message": "모델 엔진 미로드"}, {"prompt_tokens": 0, "completion_tokens": 0}
 
@@ -101,16 +101,22 @@ class LlamaInferenceCore:
                 
                 from datetime import datetime
                 import sys
-                print(f"\n\n[{datetime.now().strftime('%H:%M:%S')}] 🤖 [LLM 생성 중...] (실시간 스트리밍)\n" + "-"*50, flush=True)
+                print(f"\n\n[{datetime.now().strftime('%H:%M:%S')}] [LLM 생성 중...] (실시간 스트리밍)\n" + "-"*50, flush=True)
                 
                 text_output = ""
                 for chunk in response:
                     delta = chunk['choices'][0]['text']
                     text_output += delta
-                    sys.stdout.write(delta)
-                    sys.stdout.flush()
+                    if stream_callback:
+                        stream_callback(delta)
+                    try:
+                        sys.stdout.write(delta)
+                        sys.stdout.flush()
+                    except UnicodeEncodeError:
+                        sys.stdout.write("?")
+                        sys.stdout.flush()
                 
-                print("\n" + "-"*50 + f"\n[{datetime.now().strftime('%H:%M:%S')}] ✅ [생성 완료]\n", flush=True)
+                print("\n" + "-"*50 + f"\n[{datetime.now().strftime('%H:%M:%S')}] [생성 완료]\n", flush=True)
                 text_output = text_output.strip()
                 
                 usage = {"prompt_tokens": len(prompt)//3, "completion_tokens": len(text_output)//3, "total_tokens": (len(prompt)+len(text_output))//3}

@@ -12,13 +12,14 @@ from core.parser import StrictParser
 from agents.schemas import ARCHITECT_SCHEMA, WORKER_SCHEMA
 
 class AgentWorker(threading.Thread):
-    def __init__(self, agent_id, role_prompt, task_data, on_done=None, on_fail=None):
+    def __init__(self, agent_id, role_prompt, task_data, on_done=None, on_fail=None, on_stream=None):
         super().__init__()
         self.agent_id = agent_id
         self.role_prompt = role_prompt
         self.task_data = task_data
         self.on_done = on_done
         self.on_fail = on_fail
+        self.on_stream = on_stream
         self.heartbeat = time.time()
         self.llm_core = LlamaInferenceCore.get_instance()
         self._stop_event = threading.Event()
@@ -41,7 +42,12 @@ class AgentWorker(threading.Thread):
             full_prompt = f"### [PAST LOGS]\n{past_mem}\n\n### [INPUT DATA]\n{passed_result}\n\n### [MISSION]\n{instruction}"
             
             schema = ARCHITECT_SCHEMA if self.agent_id == "command" else WORKER_SCHEMA
-            result_json, usage = self.llm_core.generate(self.role_prompt, full_prompt, schema)
+            
+            def stream_cb(delta):
+                if self.on_stream:
+                    self.on_stream(self.agent_id, delta)
+
+            result_json, usage = self.llm_core.generate(self.role_prompt, full_prompt, schema, stream_callback=stream_cb)
             
             if self.isInterruptionRequested(): return
 
@@ -50,8 +56,9 @@ class AgentWorker(threading.Thread):
                 if self.agent_id == "command":
                     result_json = {
                         "status": 200,
-                        "summary": "LLM output parsing failed. Fallback to basic file agent.",
-                        "plan": [{"target": "file", "instruction": instruction}]
+                        "thought": "JSON 파싱 오류가 발생하여 기본 폴백 모드로 복구합니다.",
+                        "summary": "JSON 파싱 실패로 인한 File Manager 폴백 전환",
+                        "next_action": {"target": "file", "instruction": instruction}
                     }
                 else:
                     import re
@@ -76,15 +83,16 @@ class AgentWorker(threading.Thread):
                     logger.warning(f"COMMAND validation failed: {ve}. Injecting fallback plan.")
                     result_json = {
                         "status": 200,
-                        "summary": "LLM failed to output a valid plan schema. Fallback to basic file agent.",
-                        "plan": [{"target": "file", "instruction": instruction}]
+                        "thought": "스키마 유효성 검증 실패로 인해 기본 폴백 모드로 전환합니다.",
+                        "summary": "유효하지 않은 계획 스키마로 인한 File Manager 폴백 전환",
+                        "next_action": {"target": "file", "instruction": instruction}
                     }
             elif self.agent_id != "command" and "plan" in result_json:
                 logger.warning(f"{self.agent_id.upper()} returned plan data unexpectedly. Removing plan field.")
                 result_json.pop("plan")
                 result_json["message"] = (result_json.get("message", "") + " [WARNING] Non-command agents must not generate new plans.").strip()
 
-            # 파일 생성형 에이전트(file, code, doc)만 물리 파일 작업 수행
+            # 파일 생성형 에이전트(file, code, doc, tester)만 물리 파일 작업 수행
             if self.agent_id not in ["command", "secretary"]:
                 if result_json.get("status") == 200 and "file_name" in result_json:
                     if "content" in result_json and isinstance(result_json["content"], str):
@@ -102,15 +110,54 @@ class AgentWorker(threading.Thread):
             # 릴레이 로직 파싱 (Orchestrator가 사용할 데이터 전송)
             next_plan = self.task_data.get("plan", [])
             
-            if self.agent_id == "command" and "plan" in result_json:
-                next_plan = result_json["plan"]
-                result_json["message"] = result_json.get("summary", "전체 파이프라인 설계 완료.")
+            # tester 백그라운드 테스트 수행 로직
+            if self.agent_id == "tester" and result_json.get("status") == 200 and "file_name" in result_json:
+                import subprocess
+                try:
+                    safe_path = enforce_sandbox(result_json["file_name"])
+                    proc = subprocess.run(["python", safe_path], capture_output=True, text=True, timeout=10)
+                    if proc.returncode != 0:
+                        logger.error(f"TESTER FAILED: {proc.stderr}")
+                        result_json["message"] = f"[TEST FAILED] {proc.stderr}"
+                        # 기존: 직접 code를 삽입하여 루프를 돌림
+                        # 개선: 이제는 그냥 다음 타겟(command)에게 테스트 결과를 리포트하여 커맨더가 직접 생각하게 함.
+                    else:
+                        result_json["message"] = f"테스트 하네스 성공: {proc.stdout.strip()}"
+                except subprocess.TimeoutExpired:
+                    result_json["message"] = "[TEST FAILED] Timeout Exceeded (10s)."
 
             next_task = None
-            if next_plan:
-                next_task = next_plan.pop(0)
-                next_task["plan"] = next_plan
+            if self.agent_id == "command":
+                next_action = result_json.get("next_action", {})
+                target = next_action.get("target", "secretary")
+                instruction = next_action.get("instruction", "최종 보고를 수행하십시오.")
+                
+                result_json["message"] = f"재귀 추론 완료 -> 다음 행동: {target.upper()} ({result_json.get('summary', 'N/A')})"
+                
+                next_task = {
+                    "target": target,
+                    "instruction": instruction,
+                    "plan": []
+                }
+                
+                # target이 비서가 아닌 경우, 에이전트 수행 종료 후 다시 command 에이전트로 복귀하도록 plan에 강제 예약 주입
+                if target != "secretary":
+                    next_task["plan"] = [{
+                        "target": "command",
+                        "instruction": f"Goal: {self.task_data.get('instruction', '')}. 이전 에이전트({target})의 산출물과 피드백을 분석하여 다음 재귀 추론 단계를 결정하십시오."
+                    }]
+            else:
+                if next_plan:
+                    next_task = next_plan.pop(0)
+                    next_task["plan"] = next_plan
+
+            if next_task:
+                # 다음 타겟에 문맥 전달
                 next_task["passed_result"] = f"Prev Agent({self.agent_id}) Result: {result_json.get('message')}\nSummary: {result_json.get('summary', 'N/A')}"
+                if self.agent_id == "command":
+                    # 커맨더인 경우, 자신의 생각(thought)도 후속 에이전트에게 passed_result로 전달하여 맥락 유지
+                    next_task["passed_result"] += f"\nCommander Thought: {result_json.get('thought', 'N/A')}"
+                
                 next_task["hop_count"] = self.task_data.get("hop_count", 0) + 1
                 next_task["visited_targets"] = list(self.task_data.get("visited_targets", [])) + [self.agent_id]
 
@@ -139,14 +186,15 @@ class AgentWorker(threading.Thread):
         except: pass
 
     def _validate_command_plan(self, result_json):
-        if "plan" not in result_json or not isinstance(result_json["plan"], list):
-            raise ValueError("Command agent returned invalid or missing plan structure.")
+        if "next_action" not in result_json or not isinstance(result_json["next_action"], dict):
+            raise ValueError("Command agent returned invalid or missing next_action structure.")
 
-        valid_targets = {"file", "code", "doc", "secretary"}
-        for idx, item in enumerate(result_json["plan"]):
-            if not isinstance(item, dict):
-                raise ValueError(f"Command plan item {idx} is not a JSON object.")
-            if item.get("target") not in valid_targets:
-                raise ValueError(f"Command plan item {idx} has invalid target '{item.get('target')}'.")
-            if not item.get("instruction") or not isinstance(item["instruction"], str):
-                raise ValueError(f"Command plan item {idx} must include a non-empty string instruction.")
+        action = result_json["next_action"]
+        target = action.get("target")
+        instruction = action.get("instruction")
+
+        valid_targets = {"file", "code", "doc", "tester", "secretary"}
+        if target not in valid_targets:
+            raise ValueError(f"Invalid next_action target '{target}'. Allowed: {valid_targets}")
+        if not instruction or not isinstance(instruction, str):
+            raise ValueError("next_action instruction must be a non-empty string.")

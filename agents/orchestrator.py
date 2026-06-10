@@ -3,7 +3,7 @@ from agents.schemas import PROMPTS
 from core.sre import logger
 
 class Orchestrator:
-    VALID_TARGETS = {"command", "secretary", "file", "code", "doc"}
+    VALID_TARGETS = {"command", "secretary", "file", "code", "doc", "tester"}
     MAX_HANDOFFS = 12
 
     def __init__(self):
@@ -89,11 +89,15 @@ class Orchestrator:
             role_prompt=PROMPTS[agent_id],
             task_data=task_data,
             on_done=self.on_worker_done,
-            on_fail=self.on_worker_fail
+            on_fail=self.on_worker_fail,
+            on_stream=self._handle_worker_stream
         )
         self.workers[agent_id] = w
         self.emit_event("worker_started", agent_id)
         w.start()
+
+    def _handle_worker_stream(self, agent_id, delta):
+        self.emit_event("llm_stream", agent_id, delta)
 
     def on_worker_done(self, agent_id, result_json, next_task, usage):
         if agent_id in self.workers:
