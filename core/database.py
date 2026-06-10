@@ -151,10 +151,10 @@ class DatabaseManager:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT t.agent_id, t.instruction, d.result_content, d.created_at
+            SELECT t.agent_id, t.instruction, d.payload_json, d.created_at
             FROM tasks t
             LEFT JOIN task_dtl d ON t.workflow_id = d.workflow_id AND t.task_seq_id = d.task_seq_id
-            WHERE t.workflow_id = ? AND d.result_content IS NOT NULL
+            WHERE t.workflow_id = ? AND d.payload_json IS NOT NULL
             ORDER BY t.task_seq_id ASC
         ''', (workflow_id,))
         rows = cursor.fetchall()
@@ -162,8 +162,40 @@ class DatabaseManager:
         
         context = ""
         for row in rows[-15:]: # Last 15 actions to keep context window safe
-            agent, instr, res, ts = row
-            context += f"### [{ts}] Agent({agent}) Action\nInstruction: {instr}\nResult: {res}\n\n"
+            agent, instr, payload_str, ts = row
+            
+            try:
+                payload = json.loads(payload_str)
+            except:
+                payload = {}
+                
+            context += f"### [{ts}] Agent: {agent.upper()}\n"
+            context += f"**Instruction Received:** {instr}\n"
+            
+            if agent == "command":
+                thought = payload.get("thought", "")
+                plan = payload.get("overall_plan", "")
+                action = payload.get("next_action", {})
+                target = action.get("target", "None")
+                next_instr = action.get("instruction", "None")
+                
+                context += f"**Commander Thought:** {thought}\n"
+                context += f"**Overall Plan:** {plan}\n"
+                context += f"**Decision (Next Action):** Delegated to '{target}' with instruction: '{next_instr}'\n\n"
+            else:
+                msg = payload.get("message", "")
+                fname = payload.get("file_name", "")
+                content = payload.get("content", "")
+                
+                if fname:
+                    context += f"**Action Result:** Created/Modified file '{fname}'\n"
+                    # To prevent context blowing up, only show a snippet if content is huge
+                    if len(content) > 500:
+                        content = content[:500] + "... (truncated)"
+                    context += f"**File Content Snippet:**\n```\n{content}\n```\n\n"
+                else:
+                    context += f"**Action Result:** {msg}\n\n"
+                    
         return context if context else "이전 히스토리 없음."
 
     @staticmethod

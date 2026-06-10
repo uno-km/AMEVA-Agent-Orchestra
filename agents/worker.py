@@ -39,7 +39,6 @@ class AgentWorker(threading.Thread):
             workflow_id = self.task_data.get("workflow_id")
             original_goal = self.task_data.get("original_goal", "목표가 지정되지 않았습니다.")
             instruction = self.task_data.get("instruction", "주어진 목표를 완수하십시오.")
-            passed_result = self.task_data.get("passed_result", "이전 에이전트의 산출물 없음.")
             
             if workflow_id:
                 task_seq_id = DatabaseManager.create_task(workflow_id, self.agent_id, instruction)
@@ -48,7 +47,11 @@ class AgentWorker(threading.Thread):
                 task_seq_id = 0
                 past_mem = "이전 히스토리 없음."
             
-            full_prompt = f"### [PAST LOGS]\n{past_mem}\n\n### [INPUT DATA]\n{passed_result}\n\n### [MISSION]\n{instruction}"
+            json_warning = ""
+            if self.agent_id in ["file", "code"]:
+                json_warning = "\n\n[CRITICAL WARNING] When outputting Python code inside JSON, ensure all double quotes and newlines are properly escaped so it does not cause 'unterminated string literal' errors. Use standard JSON formatting."
+
+            full_prompt = f"### [PAST LOGS & CONTEXT]\n{past_mem}\n\n### [CURRENT MISSION]\n{instruction}{json_warning}"
             
             schema = ARCHITECT_SCHEMA if self.agent_id == "command" else WORKER_SCHEMA
             
@@ -73,6 +76,10 @@ class AgentWorker(threading.Thread):
                 else:
                     import re
                     raw = result_json.get("raw_text", "")
+                    
+                    fname_match = re.search(r'"file_name"\s*:\s*"([^"]+)"', raw)
+                    fname = fname_match.group(1) if fname_match else "generated_script.py"
+                    
                     code_match = re.search(r'```(?:python)?\s*(.*?)\s*```', raw, re.DOTALL)
                     extracted_code = code_match.group(1).strip() if code_match else raw
                     
@@ -82,7 +89,7 @@ class AgentWorker(threading.Thread):
                     result_json = {
                         "status": 200,
                         "message": "Extracted raw code due to JSON parsing failure.",
-                        "file_name": "calculator.py",
+                        "file_name": fname,
                         "content": extracted_code
                     }
 
@@ -161,12 +168,6 @@ class AgentWorker(threading.Thread):
                     next_task["plan"] = next_plan
 
             if next_task:
-                # 다음 타겟에 문맥 전달
-                next_task["passed_result"] = f"Prev Agent({self.agent_id}) Result: {result_json.get('message')}\nSummary: {result_json.get('summary', 'N/A')}"
-                if self.agent_id == "command":
-                    # 커맨더인 경우, 자신의 생각(thought)도 후속 에이전트에게 passed_result로 전달하여 맥락 유지
-                    next_task["passed_result"] += f"\nCommander Thought: {result_json.get('thought', 'N/A')}"
-                
                 next_task["hop_count"] = self.task_data.get("hop_count", 0) + 1
                 next_task["visited_targets"] = list(self.task_data.get("visited_targets", [])) + [self.agent_id]
                 next_task["workflow_id"] = workflow_id

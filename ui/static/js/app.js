@@ -16,39 +16,7 @@ let agentElapsedSecs = {};
 // Startup Hardware and Model Info
 let currentRenderedModels = [];
 
-// Accidental Reload Protection Keys (F5, Ctrl+R, Ctrl+Alt+Shift+R)
-window.addEventListener('keydown', (e) => {
-    const key = e.key.toLowerCase();
-    
-    // F5
-    if (e.key === 'F5') {
-        e.preventDefault();
-        logTraceMessage("[보안] 새로고침(F5) 입력이 차단되었습니다.", "WARN");
-        return;
-    }
-    
-    // Ctrl + R
-    if (e.ctrlKey && key === 'r') {
-        e.preventDefault();
-        logTraceMessage("[보안] 새로고침(Ctrl + R) 입력이 차단되었습니다.", "WARN");
-        return;
-    }
-    
-    // Ctrl + Alt + Shift + R
-    if (e.ctrlKey && e.altKey && e.shiftKey && key === 'r') {
-        e.preventDefault();
-        logTraceMessage("[보안] 강제 새로고침(Ctrl+Alt+Shift+R) 입력이 안전 차단되었습니다.", "WARN");
-        return;
-    }
-});
 
-// Window BeforeUnload warning guard
-window.addEventListener('beforeunload', (e) => {
-    // Standard warning dialog
-    e.preventDefault();
-    e.returnValue = '에이전트 오케스트라가 작업 도중단될 수 있습니다. 정말로 퇴장하시겠습니까?';
-    return e.returnValue;
-});
 
 // Setup WebSocket Connection
 function connectWebSocket() {
@@ -672,14 +640,39 @@ function closeAgentLogModal() {
 
 // UI Controls mapping
 document.getElementById('btn-send-command').onclick = sendCommandRequest;
+
+// Auto-complete / History initialization
+document.addEventListener("DOMContentLoaded", () => {
+    const chatInput = document.getElementById('chat-input');
+    const lastCommand = localStorage.getItem('last_command');
+    if (lastCommand) {
+        chatInput.placeholder = lastCommand;
+    }
+});
+
 document.getElementById('chat-input').onkeydown = (e) => {
-    if (e.key === 'Enter') sendCommandRequest();
+    const input = document.getElementById('chat-input');
+    if (e.key === 'Enter') {
+        sendCommandRequest();
+    } else if (e.key === 'ArrowUp' || e.key === 'Tab' || e.key === 'ArrowRight') {
+        if (input.value === '') {
+            const savedCmd = localStorage.getItem('last_command');
+            if (savedCmd) {
+                e.preventDefault();
+                input.value = savedCmd;
+            }
+        }
+    }
 };
 
 function sendCommandRequest() {
     const input = document.getElementById('chat-input');
     const txt = input.value.trim();
     if (!txt || !socket || socket.readyState !== WebSocket.OPEN) return;
+    
+    // Save to localStorage for history/autocomplete
+    localStorage.setItem('last_command', txt);
+    input.placeholder = txt;
     
     socket.send(JSON.stringify({
         type: 'start_mission',
