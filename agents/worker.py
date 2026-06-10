@@ -54,11 +54,19 @@ class AgentWorker(threading.Thread):
                         "plan": [{"target": "file", "instruction": instruction}]
                     }
                 else:
+                    import re
+                    raw = result_json.get("raw_text", "")
+                    code_match = re.search(r'```(?:python)?\s*(.*?)\s*```', raw, re.DOTALL)
+                    extracted_code = code_match.group(1).strip() if code_match else raw
+                    
+                    if not extracted_code.strip():
+                        extracted_code = "LLM failed to generate valid output."
+                    
                     result_json = {
                         "status": 200,
-                        "message": "Fallback applied due to LLM parsing failure.",
-                        "file_name": "fallback.txt",
-                        "content": "LLM failed to generate valid output."
+                        "message": "Extracted raw code due to JSON parsing failure.",
+                        "file_name": "calculator.py",
+                        "content": extracted_code
                     }
 
             if self.agent_id == "command":

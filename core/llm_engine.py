@@ -87,21 +87,33 @@ class LlamaInferenceCore:
 
         with self.inference_lock:
             try:
-                prompt = f"<|im_start|>system\n{system_p}\nJSON Only.<|im_end|>\n<|im_start|>user\n{user_p}<|im_end|>\n<|im_start|>assistant\n"
+                import json
+                schema_str = json.dumps(schema, indent=2, ensure_ascii=False)
+                prompt = f"<|im_start|>system\n{system_p}\nYou MUST output a valid JSON object matching this JSON Schema:\n{schema_str}\nJSON Only. No markdown formatting.<|im_end|>\n<|im_start|>user\n{user_p}<|im_end|>\n<|im_start|>assistant\n"
                 
                 response = self.llm(
                     prompt, 
                     max_tokens=2500, 
                     stop=["<|im_end|>"], 
-                    temperature=0.1
+                    temperature=0.1,
+                    stream=True
                 )
                 
-                text_output = response['choices'][0]['text'].strip()
+                from datetime import datetime
+                import sys
+                print(f"\n\n[{datetime.now().strftime('%H:%M:%S')}] 🤖 [LLM 생성 중...] (실시간 스트리밍)\n" + "-"*50, flush=True)
                 
-                usage = response.get('usage')
-                if not usage:
-                    p_tk, c_tk = len(prompt)//3, len(text_output)//3
-                    usage = {"prompt_tokens": p_tk, "completion_tokens": c_tk, "total_tokens": p_tk + c_tk}
+                text_output = ""
+                for chunk in response:
+                    delta = chunk['choices'][0]['text']
+                    text_output += delta
+                    sys.stdout.write(delta)
+                    sys.stdout.flush()
+                
+                print("\n" + "-"*50 + f"\n[{datetime.now().strftime('%H:%M:%S')}] ✅ [생성 완료]\n", flush=True)
+                text_output = text_output.strip()
+                
+                usage = {"prompt_tokens": len(prompt)//3, "completion_tokens": len(text_output)//3, "total_tokens": (len(prompt)+len(text_output))//3}
                 
                 with self.token_lock:
                     self.total_tokens_used += usage.get('total_tokens', 0)
@@ -117,4 +129,4 @@ class LlamaInferenceCore:
                 logger.error(f"GENERATE FATAL: {e}")
                 import traceback
                 logger.error(traceback.format_exc())
-                return {"status": 500, "message": str(e)}, {"prompt_tokens": 0, "completion_tokens": 0}
+                return {"status": 500, "message": str(e), "raw_text": locals().get('text_output', '')}, {"prompt_tokens": 0, "completion_tokens": 0}

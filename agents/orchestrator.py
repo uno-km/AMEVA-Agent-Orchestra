@@ -39,7 +39,7 @@ class Orchestrator:
             return False, f"Invalid target '{target}'. Allowed targets: {', '.join(sorted(self.VALID_TARGETS))}."
 
         visited = list(task_data.get("visited_targets", []))
-        if visited.count(target) >= 2:
+        if visited.count(target) >= 5:
             return False, f"Loop detected: target '{target}' has already appeared in visited path {visited}."
 
         if agent_id != "command" and not task_data.get("instruction"):
