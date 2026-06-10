@@ -88,8 +88,8 @@ if (-Not (Test-HuggingFaceConnectivity)) {
 $models = @{
     "qwen2.5-3b-instruct-q4_k_m.gguf" = "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf"
     "qwen2.5-1.5b-instruct-q4_k_m.gguf" = "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
-    "llama3.2-1b-instruct-q4_k_m.gguf" = "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf"
-    "qwen2.5-0.5b-instruct-q4_k_m.gguf" = "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-q4_k_m.gguf"
+    "Llama-3.2-1B-Instruct-Q4_K_M.gguf" = "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf"
+    "qwen2.5-0.5b-q4_k_m.gguf" = "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-q4_k_m.gguf"
 }
 
 foreach ($name in $models.Keys) {
