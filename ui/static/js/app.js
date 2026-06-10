@@ -86,6 +86,10 @@ function handleWebSocketMessage(data) {
             updateTotalTokens(data.tokens);
             break;
             
+        case 'console_log':
+            logConsoleMessage(data.message);
+            break;
+            
         case 'sre_event':
             logSreMessage(data.message);
             break;
@@ -118,8 +122,11 @@ function handleWebSocketMessage(data) {
             if (currentOpenedLogAgentId === data.agent_id) {
                 const logsBox = document.getElementById('agent-modal-logs');
                 if (logsBox) {
+                    const isAtBottom = logsBox.scrollHeight - logsBox.scrollTop <= logsBox.clientHeight + 15;
                     logsBox.innerText += data.delta;
-                    logsBox.scrollTop = logsBox.scrollHeight;
+                    if (isAtBottom) {
+                        logsBox.scrollTop = logsBox.scrollHeight;
+                    }
                 }
             }
             break;
@@ -291,6 +298,34 @@ function logTraceMessage(msg, lvl = "INFO") {
     p.innerText = `[${new Date().toLocaleTimeString()}] [${lvl}] ${msg}`;
     view.appendChild(p);
     view.scrollTop = view.scrollHeight;
+}
+
+// Helper to write to CLI Console Log
+function logConsoleMessage(msg) {
+    const view = document.getElementById('console-log-view');
+    if (!view) return;
+    const p = document.createElement('div');
+    p.innerText = msg;
+    view.appendChild(p);
+    view.scrollTop = view.scrollHeight;
+}
+
+// Switch Log Tabs
+function switchLogTab(tabId) {
+    document.querySelectorAll('.log-tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.terminal-view').forEach(view => {
+        if(view.id === 'trace-log-view' || view.id === 'console-log-view') {
+            view.classList.remove('active-tab');
+        }
+    });
+
+    if (tabId === 'trace') {
+        document.querySelectorAll('.log-tab-btn')[0].classList.add('active');
+        document.getElementById('trace-log-view').classList.add('active-tab');
+    } else {
+        document.querySelectorAll('.log-tab-btn')[1].classList.add('active');
+        document.getElementById('console-log-view').classList.add('active-tab');
+    }
 }
 
 // Helper to write to SRE log

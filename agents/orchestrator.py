@@ -47,9 +47,15 @@ class Orchestrator:
 
         return True, ""
 
-    def start_mission(self, user_request):
+    def start_mission(self, user_request, workflow_id=None):
         """총괄 지휘관(command) 에이전트를 통해 초기 계획(plan) 수립 시작"""
+        if not workflow_id:
+            from core.database import DatabaseManager
+            workflow_id = DatabaseManager.create_workflow(user_request)
+            
         initial_task = {
+            "workflow_id": workflow_id,
+            "original_goal": user_request,
             "instruction": (
                 f"Goal: {user_request}. Analyze the objective and design an optimal multi-agent workflow. "
                 "You are not restricted to any fixed sequence. You may choose to find existing files, "

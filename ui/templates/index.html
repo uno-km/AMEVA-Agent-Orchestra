@@ -125,8 +125,12 @@
 
                 <!-- 시스템 로그 영역 -->
                 <div id="log-section">
-                    <div class="section-title">🖥️ SYSTEM TRACE LOG</div>
-                    <div id="trace-log-view" class="terminal-view"></div>
+                    <div class="log-tabs">
+                        <button class="log-tab-btn active" onclick="switchLogTab('trace')">🖥️ SYSTEM TRACE</button>
+                        <button class="log-tab-btn" onclick="switchLogTab('console')">📺 CLI CONSOLE</button>
+                    </div>
+                    <div id="trace-log-view" class="terminal-view active-tab"></div>
+                    <div id="console-log-view" class="terminal-view"></div>
                 </div>
             </section>
 
@@ -194,12 +198,12 @@
                 <!-- JSON Payload Viewer -->
                 <div style="flex: 1; display: flex; flex-direction: column;">
                     <h3>Task Payload (JSON)</h3>
-                    <pre id="agent-modal-payload" class="agent-log-terminal" style="flex: 1; margin: 0; white-space: pre-wrap; word-wrap: break-word;"></pre>
+                    <pre id="agent-modal-payload" class="agent-log-terminal" style="flex: 1; margin: 0; white-space: pre-wrap; word-wrap: break-word; overflow-y: auto;"></pre>
                 </div>
                 <!-- Streaming Logs Viewer -->
                 <div style="flex: 1; display: flex; flex-direction: column;">
                     <h3>LLM Streaming Output</h3>
-                    <div id="agent-modal-logs" class="agent-log-terminal" style="flex: 1; margin: 0; white-space: pre-wrap; word-wrap: break-word;"></div>
+                    <div id="agent-modal-logs" class="agent-log-terminal" style="flex: 1; margin: 0; white-space: pre-wrap; word-wrap: break-word; overflow-y: auto;"></div>
                 </div>
             </div>
             <div class="modal-footer" style="margin-top: 15px;">

@@ -399,7 +399,37 @@ button {
     min-height: 120px;
 }
 
+.log-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+.log-tab-btn {
+    background-color: var(--bg-board);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    padding: 5px 15px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.log-tab-btn:hover {
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.log-tab-btn.active {
+    background-color: var(--accent-blue);
+    color: white;
+    border-color: var(--accent-blue);
+}
+
 .terminal-view {
+    display: none;
     flex: 1;
     background-color: #1e272e;
     color: #4cd137;
@@ -411,6 +441,10 @@ button {
     border: 1px solid var(--glass-border);
     white-space: pre-wrap;
     line-height: 1.5;
+}
+
+.terminal-view.active-tab {
+    display: block;
 }
 
 .terminal-view-yellow {

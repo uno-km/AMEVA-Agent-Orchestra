@@ -10,6 +10,7 @@ from core.config import MEMORY_DIR
 from core.security import enforce_sandbox
 from core.parser import StrictParser
 from agents.schemas import ARCHITECT_SCHEMA, WORKER_SCHEMA
+from core.database import DatabaseManager
 
 class AgentWorker(threading.Thread):
     def __init__(self, agent_id, role_prompt, task_data, on_done=None, on_fail=None, on_stream=None):
@@ -35,9 +36,17 @@ class AgentWorker(threading.Thread):
             if self.isInterruptionRequested(): return
             self.heartbeat = time.time()
             
-            past_mem = self.read_memory()
+            workflow_id = self.task_data.get("workflow_id")
+            original_goal = self.task_data.get("original_goal", "목표가 지정되지 않았습니다.")
             instruction = self.task_data.get("instruction", "주어진 목표를 완수하십시오.")
             passed_result = self.task_data.get("passed_result", "이전 에이전트의 산출물 없음.")
+            
+            if workflow_id:
+                task_seq_id = DatabaseManager.create_task(workflow_id, self.agent_id, instruction)
+                past_mem = DatabaseManager.get_workflow_context(workflow_id)
+            else:
+                task_seq_id = 0
+                past_mem = "이전 히스토리 없음."
             
             full_prompt = f"### [PAST LOGS]\n{past_mem}\n\n### [INPUT DATA]\n{passed_result}\n\n### [MISSION]\n{instruction}"
             
@@ -56,6 +65,7 @@ class AgentWorker(threading.Thread):
                 if self.agent_id == "command":
                     result_json = {
                         "status": 200,
+                        "overall_plan": "파싱 오류 발생. 기본 파일 생성/조회 단계부터 재추론을 시도합니다.",
                         "thought": "JSON 파싱 오류가 발생하여 기본 폴백 모드로 복구합니다.",
                         "summary": "JSON 파싱 실패로 인한 File Manager 폴백 전환",
                         "next_action": {"target": "file", "instruction": instruction}
@@ -105,7 +115,6 @@ class AgentWorker(threading.Thread):
                             f.write(final_content)
                         
                         result_json["message"] = f"성공: {result_json['file_name']} 파일 작성 완료"
-                        self.save_memory(instruction, result_json["message"])
 
             # 릴레이 로직 파싱 (Orchestrator가 사용할 데이터 전송)
             next_plan = self.task_data.get("plan", [])
@@ -144,7 +153,7 @@ class AgentWorker(threading.Thread):
                 if target != "secretary":
                     next_task["plan"] = [{
                         "target": "command",
-                        "instruction": f"Goal: {self.task_data.get('instruction', '')}. 이전 에이전트({target})의 산출물과 피드백을 분석하여 다음 재귀 추론 단계를 결정하십시오."
+                        "instruction": f"Goal: {original_goal}. 이전 에이전트({target})의 산출물과 피드백을 분석하여 다음 재귀 추론 단계를 결정하십시오."
                     }]
             else:
                 if next_plan:
@@ -160,30 +169,26 @@ class AgentWorker(threading.Thread):
                 
                 next_task["hop_count"] = self.task_data.get("hop_count", 0) + 1
                 next_task["visited_targets"] = list(self.task_data.get("visited_targets", [])) + [self.agent_id]
+                next_task["workflow_id"] = workflow_id
+                next_task["original_goal"] = original_goal
+
+            if workflow_id:
+                DatabaseManager.log_task_dtl(workflow_id, task_seq_id, self.agent_id, "execution", result_json, result_json.get("message", "완료"))
 
             if self.on_done:
                 self.on_done(self.agent_id, result_json, next_task if next_task else {}, usage)
             
         except Exception as e:
-            logger.error(f"WORKER FATAL [{self.agent_id}]: {traceback.format_exc()}")
+            tb = traceback.format_exc()
+            logger.error(f"WORKER FATAL [{self.agent_id}]: {tb}")
+            workflow_id = getattr(self, 'task_data', {}).get("workflow_id", "")
+            if workflow_id:
+                # We might not have task_seq_id if it failed very early
+                seq_id = locals().get('task_seq_id', 0)
+                DatabaseManager.log_exception(workflow_id, seq_id, self.agent_id, str(e), tb)
+                
             if self.on_fail:
                 self.on_fail(self.agent_id, f"워커 치명적 오류: {str(e)}")
-
-    def read_memory(self):
-        p = os.path.join(MEMORY_DIR, f"{self.agent_id}_memory.md")
-        if not os.path.exists(p): return "이전 히스토리 없음."
-        try:
-            with open(p, 'r', encoding='utf-8') as f:
-                return "".join(f.readlines()[-30:])
-        except: return "기억 읽기 오류."
-
-    def save_memory(self, action, res):
-        p = os.path.join(MEMORY_DIR, f"{self.agent_id}_memory.md")
-        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            with open(p, 'a', encoding='utf-8') as f:
-                f.write(f"### [{ts}] {action}\n- Result: {res}\n\n")
-        except: pass
 
     def _validate_command_plan(self, result_json):
         if "next_action" not in result_json or not isinstance(result_json["next_action"], dict):

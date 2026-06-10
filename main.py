@@ -19,7 +19,11 @@ from core.llm_engine import LlamaInferenceCore
 from core.sre import WorkspaceWatcher, logger
 from core.config import MEMORY_DIR, WORKSPACE_DIR, MODEL_DIR, AVAILABLE_MODELS, LOG_DIR
 from core.bootstrap import HardwareProfiler, ModelDownloader
+from core.database import setup_db, DatabaseManager
 from agents.orchestrator import Orchestrator
+
+# Setup DB
+setup_db()
 
 # Initialize FastAPI App
 app = FastAPI(title="AMEVA Agent Orchestra - Enterprise Web Console")
@@ -91,12 +95,12 @@ class WebConsoleLogHandler(logging.Handler):
     def emit(self, record):
         try:
             log_entry = self.format(record)
-            if "CORE:" in log_entry or "WORKER" in log_entry or "Orchestrator:" in log_entry:
-                if loop:
-                    asyncio.run_coroutine_threadsafe(
-                        manager.broadcast({"type": "console_log", "message": log_entry}),
-                        loop
-                    )
+            DatabaseManager.log_system("CONSOLE", log_entry)
+            if loop:
+                asyncio.run_coroutine_threadsafe(
+                    manager.broadcast({"type": "console_log", "message": log_entry}),
+                    loop
+                )
         except Exception:
             pass
 
@@ -182,6 +186,7 @@ orchestrator.register_callback(orchestrator_event_callback)
 def watchdog_callback(msg, source):
     formatted = f"[{datetime.now().strftime('%H:%M:%S')}] {msg}"
     active_sre_logs.append(formatted)
+    DatabaseManager.log_system("SRE_WATCHDOG", formatted)
     if loop:
         asyncio.run_coroutine_threadsafe(
             manager.broadcast({"type": "sre_event", "message": formatted}),
@@ -234,21 +239,23 @@ async def get_index():
 @app.get("/api/memory")
 async def list_memory_files():
     try:
-        files = [f for f in os.listdir(MEMORY_DIR) if f.endswith(".md")]
+        files = [
+            "command_memory.md", "secretary_memory.md",
+            "file_memory.md", "code_memory.md",
+            "tester_memory.md", "doc_memory.md"
+        ]
         return {"files": files}
     except Exception as e:
         return {"error": str(e)}
 
 @app.get("/api/memory/{filename}")
 async def get_memory_file(filename: str):
-    # Security: check if file is markdown
-    if not filename.endswith(".md") or "/" in filename or "\\" in filename:
-        return {"error": "Access Denied"}
-    path = os.path.join(MEMORY_DIR, filename)
-    if not os.path.exists(path):
-        return {"error": "File not found"}
-    with open(path, "r", encoding="utf-8") as f:
-        return {"content": f.read()}
+    agent_id = filename.replace("_memory.md", "")
+    try:
+        content = DatabaseManager.get_agent_history(agent_id)
+        return {"content": content}
+    except Exception as e:
+        return {"error": str(e)}
 
 @app.get("/api/models")
 async def list_models():
@@ -390,7 +397,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 req = data.get("request", "").strip()
                 if req:
                     log_to_web(f"COMMANDER (Web User): {req}", "INFO")
-                    orchestrator.start_mission(req)
+                    workflow_id = DatabaseManager.create_workflow(req)
+                    orchestrator.start_mission(req, workflow_id=workflow_id)
                     
             elif m_type == "set_concurrency":
                 if not is_admin:
