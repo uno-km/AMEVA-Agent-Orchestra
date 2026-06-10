@@ -19,7 +19,7 @@ AVAILABLE_MODELS = [
         "filename": "qwen2.5-3b-instruct-q4_k_m.gguf",
         "url": "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf",
         "min_ram_gb": 8,
-        "is_default": True
+        "is_default": False
     },
     {
         "id": "qwen_2.5_1.5b",
@@ -43,7 +43,7 @@ AVAILABLE_MODELS = [
         "filename": "qwen2.5-0.5b.gguf",
         "url": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-q4_k_m.gguf",
         "min_ram_gb": 1,
-        "is_default": False
+        "is_default": True
     }
 ]
 

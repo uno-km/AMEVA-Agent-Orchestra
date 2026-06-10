@@ -105,6 +105,7 @@ class Orchestrator:
         if next_task and "target" in next_task:
             target_id = next_task["target"]
             self.emit_event("handoff_triggered", agent_id, target_id, next_task)
+            self.dispatch_worker(target_id, next_task)
 
         # 큐에 남은 작업이 있고 동시성 레벨이 허락하면 실행
         self._process_queue()

@@ -45,8 +45,32 @@ class AgentWorker(threading.Thread):
             
             if self.isInterruptionRequested(): return
 
+            if result_json.get("status") == 500:
+                logger.warning(f"Agent {self.agent_id} generated invalid response. Injecting fallback.")
+                if self.agent_id == "command":
+                    result_json = {
+                        "status": 200,
+                        "summary": "LLM output parsing failed. Fallback to basic file agent.",
+                        "plan": [{"target": "file", "instruction": instruction}]
+                    }
+                else:
+                    result_json = {
+                        "status": 200,
+                        "message": "Fallback applied due to LLM parsing failure.",
+                        "file_name": "fallback.txt",
+                        "content": "LLM failed to generate valid output."
+                    }
+
             if self.agent_id == "command":
-                self._validate_command_plan(result_json)
+                try:
+                    self._validate_command_plan(result_json)
+                except ValueError as ve:
+                    logger.warning(f"COMMAND validation failed: {ve}. Injecting fallback plan.")
+                    result_json = {
+                        "status": 200,
+                        "summary": "LLM failed to output a valid plan schema. Fallback to basic file agent.",
+                        "plan": [{"target": "file", "instruction": instruction}]
+                    }
             elif self.agent_id != "command" and "plan" in result_json:
                 logger.warning(f"{self.agent_id.upper()} returned plan data unexpectedly. Removing plan field.")
                 result_json.pop("plan")

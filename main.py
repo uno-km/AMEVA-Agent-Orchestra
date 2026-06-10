@@ -207,11 +207,11 @@ async def resource_monitoring_loop():
             })
             
             # SRE Watchdog RAM safety guard
-            if r > 93.0:
+            if r > 98.0:
                 msg = f"[{datetime.now().strftime('%H:%M:%S')}] 🚨 [CRITICAL] RAM 과부하 ({r}%)! 워커를 강제 종료합니다."
                 active_sre_logs.append(msg)
                 await manager.broadcast({"type": "sre_event", "message": msg})
-                orchestrator.shutdown_all()
+                # orchestrator.shutdown_all() # Commented out to prevent blocking completely
                 
         except Exception as e:
             logger.error(f"Resource monitoring error: {e}")
