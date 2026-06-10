@@ -32,7 +32,7 @@ AVAILABLE_MODELS = [
     {
         "id": "llama3.2_1b",
         "name": "Llama 3.2 1B (Ultra Light - 권장 RAM 4GB)",
-        "filename": "llama3.2-1b.gguf",
+        "filename": "llama3.2-1b-instruct-q4_k_m.gguf",
         "url": "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf",
         "min_ram_gb": 2,
         "is_default": False
@@ -40,7 +40,7 @@ AVAILABLE_MODELS = [
     {
         "id": "qwen_2.5_0.5b",
         "name": "Qwen2.5 0.5B (Nano - 권장 RAM 2GB)",
-        "filename": "qwen2.5-0.5b.gguf",
+        "filename": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
         "url": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-q4_k_m.gguf",
         "min_ram_gb": 1,
         "is_default": True

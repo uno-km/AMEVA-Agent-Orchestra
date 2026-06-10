@@ -88,23 +88,19 @@ if (-Not (Test-HuggingFaceConnectivity)) {
 $models = @{
     "qwen2.5-3b-instruct-q4_k_m.gguf" = "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf"
     "qwen2.5-1.5b-instruct-q4_k_m.gguf" = "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
-    "llama3.2-1b.gguf" = "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf"
-    "qwen2.5-0.5b.gguf" = "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-q4_k_m.gguf"
+    "llama3.2-1b-instruct-q4_k_m.gguf" = "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf"
+    "qwen2.5-0.5b-instruct-q4_k_m.gguf" = "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-q4_k_m.gguf"
 }
 
 foreach ($name in $models.Keys) {
     $dest = Join-Path $ModelDir $name
     if (-Not (Test-Path $dest)) {
-        if ($name -eq "qwen2.5-1.5b-instruct-q4_k_m.gguf") {
-            Write-Host "`n[?] Qwen2.5 1.5B Instruct GGUF 모델이 없습니다." -ForegroundColor Cyan
-            $choice = Read-Host "다운로드하시겠습니까? (Y/N)"
-            if ($choice -match "^[Yy]") {
-                Download-Model -Url $models[$name] -Destination $dest | Out-Null
-            } else {
-                Write-Host "=> Qwen2.5 1.5B Instruct 다운로드를 스킵합니다." -ForegroundColor Yellow
-            }
-        } else {
+        Write-Host "`n[?] $name 모델이 없습니다." -ForegroundColor Cyan
+        $choice = Read-Host "다운로드하시겠습니까? (Y/N)"
+        if ($choice -match "^[Yy]") {
             Download-Model -Url $models[$name] -Destination $dest | Out-Null
+        } else {
+            Write-Host "=> $name 다운로드를 스킵합니다." -ForegroundColor Yellow
         }
     } else {
         Write-Host "=> 이미 존재하는 모델: $name" -ForegroundColor Green
