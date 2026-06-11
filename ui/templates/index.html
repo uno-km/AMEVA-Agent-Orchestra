@@ -158,9 +158,23 @@
                 <p id="specs-text">Scanning hardware...</p>
             </div>
             
-            <h3>📌 Available Models</h3>
-            <div id="model-selection-list">
-                <div class="loading-spinner">목록 로딩 중...</div>
+            <h3>📌 Dual-LLM Architecture Selection</h3>
+            <div id="dual-model-container" style="display: flex; gap: 20px; max-height: 400px; overflow-y: auto;">
+                <div id="general-model-selection" style="flex: 1; border: 1px solid #333; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.2);">
+                    <h4 style="margin-top:0; color:#3498db; border-bottom: 1px solid #333; padding-bottom: 5px;">🧠 PM / Architect Models (General)</h4>
+                    <div id="general-model-list" class="model-selection-list">
+                        <div class="loading-spinner">목록 로딩 중...</div>
+                    </div>
+                </div>
+                <div id="coding-model-selection" style="flex: 1; border: 1px solid #333; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.2);">
+                    <h4 style="margin-top:0; color:#2ecc71; border-bottom: 1px solid #333; padding-bottom: 5px;">💻 Developer Models (Coding)</h4>
+                    <div id="coding-model-list" class="model-selection-list">
+                        <div class="loading-spinner">목록 로딩 중...</div>
+                    </div>
+                </div>
+            </div>
+            <div style="margin-top: 15px;">
+                <button id="btn-save-models" class="btn-primary" style="width: 100%; font-size: 15px; padding: 12px; border-radius: 6px;">💾 Save & Apply Dual-LLM Setup</button>
             </div>
 
             <!-- 다운로드 진행 패널 -->

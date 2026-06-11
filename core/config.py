@@ -12,7 +12,7 @@ ALLOWED_EXTENSIONS = ('.py', '.md', '.txt', '.js', '.html', '.json', '.css', '.y
 # 기본 모델 저장 위치 및 다운로드 가능 모델 설정
 MODEL_DIR = "C:/ameva/models/llm"
 
-AVAILABLE_MODELS = [
+AVAILABLE_GENERAL_MODELS = [
     {
         "id": "qwen_2.5_3b",
         "name": "Qwen2.5 3B Instruct (Balance - 권장 RAM 12GB)",
@@ -40,8 +40,8 @@ AVAILABLE_MODELS = [
     {
         "id": "qwen_2.5_0.5b",
         "name": "Qwen2.5 0.5B (Nano - 권장 RAM 2GB)",
-        "filename": "qwen2.5-0.5b-q4_k_m.gguf",
-        "url": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-q4_k_m.gguf",
+        "filename": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+        "url": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf",
         "min_ram_gb": 1,
         "is_default": True
     },
@@ -73,9 +73,36 @@ AVAILABLE_MODELS = [
         "id": "gemma_2_27b",
         "name": "Gemma 2 27B Instruct (Google Elite - 권장 RAM 20GB)",
         "filename": "gemma-2-27b-it-Q4_K_M.gguf",
-        "url": "https://huggingface.co/bartowski/gemma-2-27b-it-GGUF/resolve/main/gemma-2-27b-it-Q4_K_M.gguf",
+        "url": "https://huggingface.co/bartowski/gemma-2-27b-it-GGUF/resolve/main/gemma-2-27b-it-GGUF.gguf",
         "min_ram_gb": 18,
         "is_default": False
+    }
+]
+
+AVAILABLE_CODING_MODELS = [
+    {
+        "id": "qwen_2.5_coder_7b",
+        "name": "Qwen2.5 Coder 7B (Pro Coder) ⭐ Rec.",
+        "filename": "qwen2.5-coder-7b-instruct-q4_k_m.gguf",
+        "url": "https://huggingface.co/bartowski/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/main/Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf",
+        "min_ram_gb": 12,
+        "is_default": False
+    },
+    {
+        "id": "qwen_2.5_coder_3b",
+        "name": "Qwen2.5 Coder 3B (Balance Coder)",
+        "filename": "qwen2.5-coder-3b-instruct-q4_k_m.gguf",
+        "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct-GGUF/resolve/main/qwen2.5-coder-3b-instruct-q4_k_m.gguf",
+        "min_ram_gb": 8,
+        "is_default": False
+    },
+    {
+        "id": "qwen_2.5_coder_1.5b",
+        "name": "Qwen2.5 Coder 1.5B (Light Coder)",
+        "filename": "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
+        "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
+        "min_ram_gb": 4,
+        "is_default": True
     }
 ]
 

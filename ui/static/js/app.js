@@ -483,57 +483,98 @@ async function loadHardwareSpecs() {
 }
 
 async function loadModelList() {
-    const list = document.getElementById('model-selection-list');
-    list.innerHTML = '<div class="loading-spinner">목록 로딩 중...</div>';
+    const genList = document.getElementById('general-model-list');
+    const codList = document.getElementById('coding-model-list');
+    genList.innerHTML = '<div class="loading-spinner">목록 로딩 중...</div>';
+    codList.innerHTML = '<div class="loading-spinner">목록 로딩 중...</div>';
     
     try {
         const res = await fetch('/api/models');
         const data = await res.json();
-        list.innerHTML = '';
-        currentRenderedModels = data.models || [];
+        genList.innerHTML = '';
+        codList.innerHTML = '';
         
-        currentRenderedModels.forEach((m, idx) => {
+        function renderModel(m, listEl, type) {
             const div = document.createElement('div');
             div.className = 'model-item';
+            div.style.display = 'flex';
+            div.style.alignItems = 'center';
+            div.style.marginBottom = '10px';
             
-            const label = document.createElement('span');
+            const radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.name = `${type}-model-select`;
+            radio.value = m.id;
+            radio.id = `radio-${m.id}`;
+            radio.style.marginRight = '10px';
+            if (m.is_default) {
+                radio.checked = true;
+            }
+            
+            const label = document.createElement('label');
+            label.htmlFor = `radio-${m.id}`;
             label.className = 'model-name';
             label.innerText = `${m.name} ${m.recommended ? '⭐ Rec.' : ''}`;
+            label.style.flex = '1';
+            label.style.cursor = 'pointer';
             if (m.recommended) {
                 label.style.color = '#fbc531';
             }
             
             const btn = document.createElement('button');
             if (m.is_installed) {
-                btn.className = 'btn-primary';
-                btn.innerText = 'Load';
-                btn.onclick = () => selectModel(m.id);
-            } else {
                 btn.className = 'btn-secondary';
+                btn.innerText = 'Ready';
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+            } else {
+                btn.className = 'btn-primary';
                 btn.innerText = 'Install';
-                btn.onclick = () => installModel(m.id);
+                btn.onclick = (e) => {
+                    e.preventDefault();
+                    installModel(m.id);
+                };
             }
             
+            div.appendChild(radio);
             div.appendChild(label);
             div.appendChild(btn);
-            list.appendChild(div);
-        });
+            listEl.appendChild(div);
+        }
+
+        if (data.models && data.models.general) {
+            data.models.general.forEach(m => renderModel(m, genList, 'general'));
+            data.models.coding.forEach(m => renderModel(m, codList, 'coding'));
+        }
     } catch (e) {
-        list.innerHTML = `<div class="loading-spinner" style="color:var(--accent-red)">Failed to load models: ${e}</div>`;
+        genList.innerHTML = `<div class="loading-spinner" style="color:var(--accent-red)">Failed to load models: ${e}</div>`;
+        codList.innerHTML = '';
     }
 }
 
-async function selectModel(modelId) {
+document.getElementById('btn-save-models').onclick = async () => {
     if (document.querySelectorAll('.agent-card.working').length > 0) {
         alert("작업이 진행 중일 때는 모델을 변경하거나 설치할 수 없습니다.");
         return;
     }
-    logTraceMessage(`CORE: 모델 로딩 시도... -> ${modelId}`, "INFO");
+    
+    const genRadio = document.querySelector('input[name="general-model-select"]:checked');
+    const codRadio = document.querySelector('input[name="coding-model-select"]:checked');
+    
+    if (!genRadio || !codRadio) {
+        alert("일반 모델과 코딩 모델을 각각 선택해 주십시오.");
+        return;
+    }
+    
+    const genId = genRadio.value;
+    const codId = codRadio.value;
+    
+    logTraceMessage(`CORE: 듀얼 모델 로딩 시도... -> General: ${genId}, Coding: ${codId}`, "INFO");
     try {
-        const res = await fetch('/api/select_model', {
+        const res = await fetch('/api/select_models', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({model_id: modelId})
+            body: JSON.stringify({general_model_id: genId, coding_model_id: codId})
         });
         const data = await res.json();
         if (data.status === 'ok') {
@@ -544,7 +585,7 @@ async function selectModel(modelId) {
     } catch (e) {
         alert(`Request failed: ${e}`);
     }
-}
+};
 
 async function installModel(modelId) {
     if (document.querySelectorAll('.agent-card.working').length > 0) {

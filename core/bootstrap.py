@@ -4,7 +4,7 @@ import GPUtil
 import psutil
 import threading
 import urllib.request
-from .config import MODEL_DIR, AVAILABLE_MODELS
+from .config import MODEL_DIR, AVAILABLE_GENERAL_MODELS, AVAILABLE_CODING_MODELS
 import logging
 
 logger = logging.getLogger("AMEVA_Orchestra")
@@ -31,24 +31,8 @@ class HardwareProfiler:
 
     @staticmethod
     def recommend_models():
-        """Recommend models based on system RAM and VRAM"""
-        specs = HardwareProfiler.get_system_specs()
-        ram = specs["ram_gb"]
-        
-        # Calculate scores or basic filters
-        recommended = []
-        for model in AVAILABLE_MODELS:
-            m = model.copy()
-            m["is_installed"] = os.path.exists(os.path.join(MODEL_DIR, m["filename"]))
-            if ram >= m["min_ram_gb"]:
-                m["recommended"] = True
-            else:
-                m["recommended"] = False
-            recommended.append(m)
-            
-        # Sort installed first, then recommended
-        recommended.sort(key=lambda x: (not x["is_installed"], not x["recommended"]))
-        return recommended
+        """Not heavily used after Dual-LLM update, preserved for compatibility"""
+        pass
 
 class ModelDownloader(threading.Thread):
     def __init__(self, url, filename, progress_callback=None, log_callback=None, finished_callback=None):

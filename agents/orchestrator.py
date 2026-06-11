@@ -95,6 +95,25 @@ class Orchestrator:
             logger.warning(f"Orchestrator: Agent {agent_id} is already running.")
             return
 
+        # Dynamic LLM Switching (Dual-Model Architecture)
+        from core.llm_engine import LlamaInferenceCore
+        engine = LlamaInferenceCore.get_instance()
+        
+        coding_agents = {"dev", "tester"} # file manager is usually separate, but currently valid targets are pm, secretary, architect, dev, tester.
+        
+        target_model_path = None
+        if agent_id in coding_agents:
+            target_model_path = getattr(self, "active_coding_model_path", None)
+            model_type = "Coding Model"
+        else:
+            target_model_path = getattr(self, "active_general_model_path", None)
+            model_type = "General Model"
+            
+        if target_model_path and engine.current_model_path != target_model_path:
+            logger.info(f"Orchestrator: 엔진 스위칭 중 ({model_type})... -> {target_model_path}")
+            self.emit_event("llm_stream", agent_id, f"\n[SYSTEM] 모델 스위칭 중: {model_type} 최적화 진행 중... 잠시만 기다려주십시오.\n")
+            engine.load_model(target_model_path)
+
         w = AgentWorker(
             agent_id=agent_id,
             role_prompt=PROMPTS[agent_id],

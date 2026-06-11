@@ -17,7 +17,7 @@ from watchdog.observers import Observer
 
 from core.llm_engine import LlamaInferenceCore
 from core.sre import WorkspaceWatcher, logger
-from core.config import MEMORY_DIR, WORKSPACE_DIR, MODEL_DIR, AVAILABLE_MODELS, LOG_DIR
+from core.config import MEMORY_DIR, WORKSPACE_DIR, MODEL_DIR, AVAILABLE_GENERAL_MODELS, AVAILABLE_CODING_MODELS, LOG_DIR
 from core.bootstrap import HardwareProfiler, ModelDownloader
 from core.database import setup_db, DatabaseManager
 from agents.orchestrator import Orchestrator
@@ -51,6 +51,8 @@ active_download_status = "Ready"
 
 # Orchestrator Singleton
 orchestrator = Orchestrator()
+orchestrator.active_general_model_path = None
+orchestrator.active_coding_model_path = None
 
 # WebSocket Connection Manager
 class ConnectionManager:
@@ -273,8 +275,32 @@ async def get_memory_file(filename: str):
 
 @app.get("/api/models")
 async def list_models():
-    models = HardwareProfiler.recommend_models()
-    return {"models": models}
+    # Evaluate is_installed and recommendation based on RAM
+    from core.bootstrap import HardwareProfiler
+    specs = HardwareProfiler.get_system_specs()
+    ram = specs["ram_gb"]
+    
+    gen_list = []
+    for m in AVAILABLE_GENERAL_MODELS:
+        mc = m.copy()
+        mc["is_installed"] = os.path.exists(os.path.join(MODEL_DIR, mc["filename"]))
+        mc["recommended"] = (ram >= mc["min_ram_gb"])
+        gen_list.append(mc)
+        
+    cod_list = []
+    for m in AVAILABLE_CODING_MODELS:
+        mc = m.copy()
+        mc["is_installed"] = os.path.exists(os.path.join(MODEL_DIR, mc["filename"]))
+        mc["recommended"] = (ram >= mc["min_ram_gb"])
+        cod_list.append(mc)
+
+    # Return both model lists
+    return {
+        "models": {
+            "general": gen_list,
+            "coding": cod_list
+        }
+    }
 
 def check_admin(request: Request) -> bool:
     referer = request.headers.get("referer", "")
@@ -284,29 +310,37 @@ def check_admin(request: Request) -> bool:
         return True
     return False
 
-@app.post("/api/select_model")
-async def select_model(request: Request):
+@app.post("/api/select_models")
+async def select_models(request: Request):
     if not check_admin(request):
         return {"status": "error", "message": "권한이 없습니다. (관람 전용 모드)"}
     data = await request.json()
-    model_id = data.get("model_id")
+    general_id = data.get("general_model_id")
+    coding_id = data.get("coding_model_id")
     
-    # Match model
-    model_info = next((m for m in AVAILABLE_MODELS if m["id"] == model_id), None)
-    if not model_info:
+    gen_model = next((m for m in AVAILABLE_GENERAL_MODELS if m["id"] == general_id), None)
+    cod_model = next((m for m in AVAILABLE_CODING_MODELS if m["id"] == coding_id), None)
+    
+    if not gen_model or not cod_model:
         return {"status": "error", "message": "Model not found"}
         
-    model_path = os.path.join(MODEL_DIR, model_info["filename"])
-    if not os.path.exists(model_path):
-        return {"status": "error", "message": "Model not downloaded"}
+    gen_path = os.path.join(MODEL_DIR, gen_model["filename"])
+    cod_path = os.path.join(MODEL_DIR, cod_model["filename"])
+    
+    if not os.path.exists(gen_path) or not os.path.exists(cod_path):
+        return {"status": "error", "message": "Selected models are not downloaded"}
 
-    # Load model in a separate thread to avoid blocking server main loop
+    # Update orchestrator paths
+    orchestrator.active_general_model_path = gen_path
+    orchestrator.active_coding_model_path = cod_path
+
+    # Immediately load the general model to be ready
     def load_task():
         engine = LlamaInferenceCore.get_instance()
-        success = engine.load_model(model_path)
+        success = engine.load_model(gen_path)
         if success:
             asyncio.run_coroutine_threadsafe(
-                manager.broadcast({"type": "model_loaded", "model_path": model_path}),
+                manager.broadcast({"type": "model_loaded", "model_path": gen_path, "coding_model_path": cod_path}),
                 loop
             )
         else:
@@ -315,54 +349,98 @@ async def select_model(request: Request):
                 loop
             )
 
-    threading.Thread(target=load_task).start()
-    return {"status": "ok", "message": "Model loading started"}
+active_download = None
+active_download_progress = 0
+active_download_status = ""
+download_queue = []
+download_thread = None
+
+def process_download_queue():
+    global active_download, active_download_progress, active_download_status, download_queue, download_thread
+    while download_queue:
+        model_info = download_queue[0]
+        model_id = model_info["id"]
+        
+        dl_event = threading.Event()
+        
+        def dl_progress(percent):
+            global active_download_progress
+            active_download_progress = percent
+            asyncio.run_coroutine_threadsafe(
+                manager.broadcast({"type": "download_progress", "percent": percent, "model_id": model_id}),
+                loop
+            )
+
+        def dl_log(msg):
+            global active_download_status
+            active_download_status = f"[{model_info['name']}] {msg} (대기열: {len(download_queue)-1}개)"
+            asyncio.run_coroutine_threadsafe(
+                manager.broadcast({"type": "download_status", "status": active_download_status, "model_id": model_id}),
+                loop
+            )
+
+        def dl_finished(success, filepath_or_err):
+            asyncio.run_coroutine_threadsafe(
+                manager.broadcast({"type": "download_finished", "success": success, "path_or_err": filepath_or_err, "model_id": model_id}),
+                loop
+            )
+            dl_event.set()
+
+        active_download = ModelDownloader(
+            url=model_info["url"],
+            filename=model_info["filename"],
+            progress_callback=dl_progress,
+            log_callback=dl_log,
+            finished_callback=dl_finished
+        )
+        active_download.start()
+        dl_event.wait()
+        
+        download_queue.pop(0)
+        active_download = None
+        active_download_progress = 0
+        active_download_status = ""
+        
+    download_thread = None
 
 @app.post("/api/install_model")
 async def install_model(request: Request):
     if not check_admin(request):
         return {"status": "error", "message": "권한이 없습니다. (관람 전용 모드)"}
-    global active_download, active_download_progress, active_download_status
-    if active_download and active_download.is_alive():
-        return {"status": "error", "message": "Download already in progress"}
+    global download_queue, download_thread
 
     data = await request.json()
     model_id = data.get("model_id")
-    model_info = next((m for m in AVAILABLE_MODELS if m["id"] == model_id), None)
+    model_info = next((m for m in AVAILABLE_GENERAL_MODELS + AVAILABLE_CODING_MODELS if m["id"] == model_id), None)
     if not model_info:
         return {"status": "error", "message": "Model not found"}
+        
+    # Check if already installed
+    if os.path.exists(os.path.join(MODEL_DIR, model_info["filename"])):
+        return {"status": "error", "message": "Already installed"}
+        
+    # Check if already in queue
+    if any(m["id"] == model_id for m in download_queue):
+        return {"status": "error", "message": "Already in download queue"}
 
-    def dl_progress(percent):
-        global active_download_progress
-        active_download_progress = percent
-        asyncio.run_coroutine_threadsafe(
-            manager.broadcast({"type": "download_progress", "percent": percent, "model_id": model_id}),
-            loop
-        )
-
-    def dl_log(msg):
+    download_queue.append(model_info)
+    
+    if active_download is not None and active_download.is_alive():
+        # 현재 다운로드 중인 항목(인덱스 0) 외의 실제 대기열 수
+        waiting_count = len(download_queue) - 1
+        current_msg = f"다운로드 진행 중... (대기열: {waiting_count}개)"
         global active_download_status
-        active_download_status = msg
+        active_download_status = current_msg
         asyncio.run_coroutine_threadsafe(
-            manager.broadcast({"type": "download_status", "status": msg, "model_id": model_id}),
+            manager.broadcast({"type": "download_status", "status": current_msg}),
             loop
         )
-
-    def dl_finished(success, filepath_or_err):
-        asyncio.run_coroutine_threadsafe(
-            manager.broadcast({"type": "download_finished", "success": success, "path_or_err": filepath_or_err, "model_id": model_id}),
-            loop
-        )
-
-    active_download = ModelDownloader(
-        url=model_info["url"],
-        filename=model_info["filename"],
-        progress_callback=dl_progress,
-        log_callback=dl_log,
-        finished_callback=dl_finished
-    )
-    active_download.start()
-    return {"status": "ok", "message": "Model download initiated"}
+    
+    if download_thread is None or not download_thread.is_alive():
+        download_thread = threading.Thread(target=process_download_queue)
+        download_thread.start()
+        
+    return {"status": "ok", "message": f"모델이 다운로드 대기열에 추가되었습니다. (현재 대기열: {len(download_queue)}개)"}
 
 # WebSocket Handler
 @app.websocket("/ws")
@@ -462,13 +540,20 @@ def main():
     os.makedirs(LOG_DIR, exist_ok=True)
     os.makedirs(MODEL_DIR, exist_ok=True)
     
-    # Load default model if already downloaded
-    default_model_info = next((m for m in AVAILABLE_MODELS if m.get("is_default")), None)
-    if default_model_info:
-        default_path = os.path.join(MODEL_DIR, default_model_info["filename"])
-        if os.path.exists(default_path):
-            logger.info(f"BOOT: 기본 모델 적재 중... -> {default_path}")
-            LlamaInferenceCore.get_instance().load_model(default_path)
+    # Load default models if already downloaded
+    default_gen = next((m for m in AVAILABLE_GENERAL_MODELS if m.get("is_default")), None)
+    default_cod = next((m for m in AVAILABLE_CODING_MODELS if m.get("is_default")), None)
+    
+    if default_gen and default_cod:
+        gen_path = os.path.join(MODEL_DIR, default_gen["filename"])
+        cod_path = os.path.join(MODEL_DIR, default_cod["filename"])
+        
+        orchestrator.active_general_model_path = gen_path
+        orchestrator.active_coding_model_path = cod_path
+        
+        if os.path.exists(gen_path):
+            logger.info(f"BOOT: 기본 PM 모델 적재 중... -> {gen_path}")
+            LlamaInferenceCore.get_instance().load_model(gen_path)
             
     # Watchdog and monitoring loops start on server startup
     watcher_observer = start_watchdog()
