@@ -132,9 +132,14 @@ class LlamaInferenceCore:
                 
                 try:
                     import json
-                    parsed_json = json.loads(text_output)
+                    parsed_json = json.loads(text_output, strict=False)
                 except:
-                    parsed_json = StrictParser.parse_response(text_output)
+                    try:
+                        import re
+                        clean_text = re.sub(r'[\x00-\x19]', ' ', text_output)
+                        parsed_json = json.loads(clean_text, strict=False)
+                    except:
+                        parsed_json = StrictParser.parse_response(text_output)
                     
                 return parsed_json, usage
             except Exception as e:

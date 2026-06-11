@@ -122,7 +122,7 @@ function handleWebSocketMessage(data) {
             
             // Secretary report alert popup
             if (data.agent_id === 'secretary' && data.result.message) {
-                alert(`🎩 SECRETARY REPORT:\n\n${data.result.message}`);
+                alert(`🎩 SECRETARY REPORT:\n\n최종 보고서(.docx)가 워크스페이스에 생성되었습니다!\n\n${data.result.message}`);
             }
             
             // Refresh Workspace when a worker finishes

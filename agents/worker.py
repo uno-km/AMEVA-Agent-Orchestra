@@ -459,35 +459,102 @@ class AgentWorker(threading.Thread):
         if result_json.get("status") == 500:
             result_json = {"status": 200, "file_name": "output.md", "content": "LLM 파싱 오류", "message": "파싱 실패 폴백"}
 
-        # 파일 저장 (tester)
+        # ── Tester 샌드박스 테스트 실행 ──
         if self.agent_id == "tester" and result_json.get("status") == 200 and "file_name" in result_json:
+            import subprocess
+            import shutil
+            import venv
+            env_dir = enforce_sandbox(".test_venv")
             try:
                 safe_path = enforce_sandbox(result_json["file_name"])
                 os.makedirs(os.path.dirname(safe_path), exist_ok=True)
                 with open(safe_path, "w", encoding="utf-8") as f:
                     f.write(result_json.get("content", ""))
-            except Exception as e:
-                logger.warning(f"TESTER file save failed: {e}")
-
-            # 테스트 실행
-            import subprocess
-            try:
-                safe_path = enforce_sandbox(result_json["file_name"])
-                proc = subprocess.run(["python", safe_path], capture_output=True, text=True, timeout=15)
+                
+                logger.info("TESTER: Creating sandbox venv...")
+                venv.create(env_dir, with_pip=False)
+                
+                if os.name == 'nt':
+                    py_exe = os.path.join(env_dir, "Scripts", "python.exe")
+                else:
+                    py_exe = os.path.join(env_dir, "bin", "python")
+                    
+                logger.info(f"TESTER: Running {safe_path} in sandbox...")
+                proc = subprocess.run([py_exe, safe_path], capture_output=True, text=True, timeout=15)
+                
                 if proc.returncode != 0:
-                    result_json["message"] = f"[TEST FAILED] {proc.stderr[:500]}"
+                    result_json["message"] = f"[TEST FAILED] {proc.stderr[:1000]}"
                 else:
                     result_json["message"] = f"테스트 성공: {proc.stdout.strip()[:200]}"
             except subprocess.TimeoutExpired:
                 result_json["message"] = "[TEST FAILED] Timeout Exceeded (15s)."
             except Exception as e:
                 result_json["message"] = f"[TEST ERROR] {e}"
+            finally:
+                logger.info("TESTER: Cleaning up sandbox venv...")
+                shutil.rmtree(env_dir, ignore_errors=True)
+
+        # ── Secretary Word 보고서 생성 ──
+        if self.agent_id == "secretary":
+            try:
+                from docx import Document
+                from docx.shared import Pt
+                from docx.oxml.ns import qn
+                
+                doc = Document()
+                # 폰트 깨짐 방지: 맑은 고딕 설정
+                style = doc.styles['Normal']
+                style.font.name = '맑은 고딕'
+                style._element.rPr.rFonts.set(qn('w:eastAsia'), '맑은 고딕')
+                
+                doc.add_heading('프로젝트 최종 보고서', 0)
+                doc.add_heading('1. 개요 및 요약', level=1)
+                doc.add_paragraph(result_json.get("content", ""))
+                
+                # 생성된 파일 목록 스캔
+                doc.add_heading('2. 생성된 파일 목록', level=1)
+                workspace_dir = enforce_sandbox("")
+                file_count = 0
+                for root, dirs, files in os.walk(workspace_dir):
+                    if ".test_venv" in root or "__pycache__" in root: continue
+                    for f in files:
+                        if f.endswith(".docx") or f.endswith(".log"): continue
+                        doc.add_paragraph(f"- {os.path.relpath(os.path.join(root, f), workspace_dir)}")
+                        file_count += 1
+                if file_count == 0:
+                    doc.add_paragraph("생성된 파일이 없습니다.")
+                
+                # 워크플로 대화 기록 추가
+                doc.add_heading('3. 상세 에이전트 대화 및 작업 로그', level=1)
+                history = DatabaseManager.get_workflow_context(workflow_id) if workflow_id else "로그 없음"
+                doc.add_paragraph(history)
+                
+                report_name = f"Final_Report_{datetime.now().strftime('%H%M%S')}.docx"
+                report_path = enforce_sandbox(report_name)
+                doc.save(report_path)
+                result_json["message"] = f"최종 보고서(.docx)가 성공적으로 생성되었습니다!\n파일명: {report_name}\n"
+            except Exception as e:
+                logger.error(f"SECRETARY DOCX ERROR: {e}")
+                result_json["message"] = f"보고서 생성 실패: {e}"
 
         if workflow_id:
             DatabaseManager.log_task_dtl(workflow_id, task_seq_id, self.agent_id, "execution",
                                           result_json, result_json.get("message", "완료"))
 
-        next_task = self._build_next_task_from_plan(workflow_id, original_goal)
+        # Tester 실패 시 PM에게 반려 피드백 루프
+        if self.agent_id == "tester" and "[TEST FAILED]" in result_json.get("message", ""):
+            next_task = {
+                "target": "pm",
+                "instruction": f"테스트 실패: {result_json['message']}\n에러 로그를 분석하여 개발자에게 코드 수정을 지시하십시오.",
+                "workflow_id": workflow_id,
+                "original_goal": original_goal,
+                "plan": [],
+                "hop_count": self.task_data.get("hop_count", 0) + 1,
+                "visited_targets": list(self.task_data.get("visited_targets", [])) + ["tester"],
+                "sender_id": "tester"
+            }
+        else:
+            next_task = self._build_next_task_from_plan(workflow_id, original_goal)
 
         if self.on_done:
             self.on_done(self.agent_id, result_json, next_task, usage)
