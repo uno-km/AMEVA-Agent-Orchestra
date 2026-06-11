@@ -32,17 +32,17 @@ function Download-Model {
         [string]$Destination
     )
     if (Test-Path $Destination) {
-        Write-Host "=> 모델이 이미 있습니다: $Destination" -ForegroundColor Green
+        Write-Host "=> Model already exists: $Destination" -ForegroundColor Green
         return $true
     }
 
-    Write-Host "=> 다운로드 중: $Destination" -ForegroundColor White
+    Write-Host "=> Downloading: $Destination" -ForegroundColor White
     try {
         Invoke-WebRequest -Uri $Url -OutFile $Destination -UseBasicParsing -TimeoutSec 3600
-        Write-Host "=> 다운로드 성공: $Destination" -ForegroundColor Green
+        Write-Host "=> Download successful: $Destination" -ForegroundColor Green
         return $true
     } catch {
-        Write-Host "=> 다운로드 실패: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "=> Download failed: $($_.Exception.Message)" -ForegroundColor Red
         return $false
     }
 }
@@ -82,35 +82,35 @@ if (-Not (Test-Path $ModelDir)) {
 # ==========================================
 Write-Section "[2/6] Checking GGUF model assets..."
 if (-Not (Test-HuggingFaceConnectivity)) {
-    Write-Host "[Warning] HuggingFace connectivity may be blocked by firewall. 모델 다운로드가 실패할 수 있습니다." -ForegroundColor Yellow
+    Write-Host "[Warning] HuggingFace connectivity may be blocked by firewall. Model download might fail." -ForegroundColor Yellow
 }
 
 $models = @{
     "qwen2.5-3b-instruct-q4_k_m.gguf" = "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf"
     "qwen2.5-1.5b-instruct-q4_k_m.gguf" = "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
     "Llama-3.2-1B-Instruct-Q4_K_M.gguf" = "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf"
-    "qwen2.5-0.5b-q4_k_m.gguf" = "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-q4_k_m.gguf"
+    "qwen2.5-0.5b-instruct-q4_k_m.gguf" = "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf"
 }
 
 foreach ($name in $models.Keys) {
     $dest = Join-Path $ModelDir $name
     if (-Not (Test-Path $dest)) {
-        Write-Host "`n[?] $name 모델이 없습니다." -ForegroundColor Cyan
-        $choice = Read-Host "다운로드하시겠습니까? (Y/N)"
+        Write-Host "`n[?] Model $name not found." -ForegroundColor Cyan
+        $choice = Read-Host "Do you want to download it? (Y/N)"
         if ($choice -match "^[Yy]") {
             Download-Model -Url $models[$name] -Destination $dest | Out-Null
         } else {
-            Write-Host "=> $name 다운로드를 스킵합니다." -ForegroundColor Yellow
+            Write-Host "=> Skipping download for $name." -ForegroundColor Yellow
         }
     } else {
-        Write-Host "=> 이미 존재하는 모델: $name" -ForegroundColor Green
+        Write-Host "=> Model already exists: $name" -ForegroundColor Green
     }
 }
 
 # 기본 로드 모델은 qwen2.5-3b-instruct-q4_k_m.gguf로 설정
 $PrimaryModel = Join-Path $ModelDir "qwen2.5-3b-instruct-q4_k_m.gguf"
 if (-Not (Test-Path $PrimaryModel)) {
-    Write-Host "[Error] 핵심 모델을 찾을 수 없습니다. 설치를 다시 시도하세요." -ForegroundColor Red
+    Write-Host "[Error] Primary model not found. Please retry installation." -ForegroundColor Red
     exit 1
 }
 
@@ -167,7 +167,7 @@ try {
     & $pythonExe -c "import psutil, GPUtil, watchdog, llama_cpp" | Out-Null
     Write-Host "=> Dependency check passed." -ForegroundColor Green
 } catch {
-    Write-Host "[Error] 일부 의존성 로드에 실패했습니다: $_" -ForegroundColor Red
+    Write-Host "[Error] Failed to load some dependencies: $_" -ForegroundColor Red
     exit 1
 }
 
