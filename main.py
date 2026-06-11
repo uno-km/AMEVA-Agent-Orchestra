@@ -250,6 +250,37 @@ async def list_memory_files():
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/api/workspace")
+async def get_workspace_files():
+    try:
+        files_data = []
+        for root, dirs, files in os.walk(WORKSPACE_DIR):
+            for file in files:
+                full_path = os.path.join(root, file)
+                rel_path = os.path.relpath(full_path, WORKSPACE_DIR)
+                files_data.append({
+                    "path": rel_path.replace("\\", "/"),
+                    "name": file
+                })
+        return {"status": "ok", "files": files_data}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/workspace/{file_path:path}")
+async def get_workspace_file_content(file_path: str):
+    try:
+        safe_path = os.path.normpath(os.path.join(WORKSPACE_DIR, file_path))
+        if not safe_path.startswith(os.path.normpath(WORKSPACE_DIR)):
+            return {"status": "error", "message": "Access denied"}
+        if os.path.exists(safe_path):
+            with open(safe_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            return {"status": "ok", "content": content}
+        else:
+            return {"status": "error", "message": "File not found"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 @app.get("/api/current_state")
 async def get_current_state():
     engine = LlamaInferenceCore.get_instance()
@@ -348,6 +379,9 @@ async def select_models(request: Request):
                 manager.broadcast({"type": "model_load_failed", "message": "Engine failed to load GGUF file"}),
                 loop
             )
+
+    threading.Thread(target=load_task).start()
+    return {"status": "ok", "message": "Model configuration updated"}
 
 active_download = None
 active_download_progress = 0

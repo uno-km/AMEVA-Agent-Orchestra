@@ -135,27 +135,18 @@ python -m venv $EnvDir
 # ==========================================
 Write-Section "[4/6] Installing llama-cpp-python and configuring acceleration..."
 $pythonExe = "$EnvDir\Scripts\python.exe"
-$env:CMAKE_ARGS = if ($hasNvidia) { "-DGGML_CUDA=on" } else { "-DGGML_CUDA=off" }
 
-$vcvarsPaths = @(
-    "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat",
-    "${env:ProgramFiles}\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat",
-    "${env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-)
-$vcvars = $vcvarsPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
-
-if ($vcvars) {
-    Write-Host "=> MSVC environment found. Installing with native compiler support..." -ForegroundColor Green
-    cmd.exe /c "call `"$vcvars`" && `"$pythonExe`" -m pip install llama-cpp-python --no-cache-dir --force-reinstall --upgrade"
+if ($hasNvidia) {
+    Write-Host "=> NVIDIA GPU detected. Installing pre-built CUDA 12.1 wheel..." -ForegroundColor Green
+    & $pythonExe -m pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121 --force-reinstall --no-cache-dir
 } else {
-    Write-Host "=> MSVC environment not found. Installing normally..." -ForegroundColor Yellow
-    & $pythonExe -m pip install llama-cpp-python --no-cache-dir --force-reinstall --upgrade
+    Write-Host "=> CPU-only or non-NVIDIA system. Installing standard wheel..." -ForegroundColor Yellow
+    & $pythonExe -m pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu --force-reinstall --no-cache-dir
 }
 
 $llamaCheck = & $pythonExe -c "import importlib.util; print(importlib.util.find_spec('llama_cpp') is not None)"
 if ($llamaCheck -match "False") {
-    Write-Host "=> llama-cpp-python import failed. Falling back to prebuilt wheel." -ForegroundColor Yellow
-    & $pythonExe -m pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu --no-cache-dir
+    Write-Host "=> [WARNING] llama-cpp-python failed to install properly." -ForegroundColor Red
 }
 
 # ==========================================

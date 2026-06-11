@@ -10,6 +10,9 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+    <!-- 토스트 알림 컨테이너 -->
+    <div id="toast-container" class="toast-container"></div>
+    
     <div id="app-container">
         <!-- 메인 탑 바 -->
         <header id="main-header">
@@ -142,8 +145,19 @@
                 <div id="memory-list-container">
                     <ul id="memory-list"></ul>
                 </div>
+
+                <div class="section-title">🗂️ WORKSPACE EXPLORER</div>
+                <div id="workspace-list-container">
+                    <ul id="workspace-list"></ul>
+                </div>
+
                 <div id="memory-viewer-container">
-                    <pre id="memory-view-content">기억 자산을 선택하여 내용을 확인하십시오.</pre>
+                    <div id="viewer-tabs" class="viewer-tabs">
+                        <button class="viewer-tab active" data-target="memory-view-content">Memory</button>
+                        <button class="viewer-tab" data-target="workspace-view-content">Workspace File</button>
+                    </div>
+                    <pre id="memory-view-content" class="viewer-content active">기억 자산을 선택하여 내용을 확인하십시오.</pre>
+                    <pre id="workspace-view-content" class="viewer-content" style="display: none;">워크스페이스 파일을 선택하여 내용을 확인하십시오.</pre>
                 </div>
             </section>
         </main>
