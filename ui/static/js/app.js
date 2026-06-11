@@ -524,6 +524,10 @@ async function loadModelList() {
 }
 
 async function selectModel(modelId) {
+    if (document.querySelectorAll('.agent-card.working').length > 0) {
+        alert("작업이 진행 중일 때는 모델을 변경하거나 설치할 수 없습니다.");
+        return;
+    }
     logTraceMessage(`CORE: 모델 로딩 시도... -> ${modelId}`, "INFO");
     try {
         const res = await fetch('/api/select_model', {
@@ -543,6 +547,10 @@ async function selectModel(modelId) {
 }
 
 async function installModel(modelId) {
+    if (document.querySelectorAll('.agent-card.working').length > 0) {
+        alert("작업이 진행 중일 때는 모델을 변경하거나 설치할 수 없습니다.");
+        return;
+    }
     try {
         const res = await fetch('/api/install_model', {
             method: 'POST',
@@ -609,27 +617,67 @@ function openAgentLog(aid) {
     modal.querySelector('#agent-modal-title').innerText = `${aid.toUpperCase()} AGENT LOGS`;
     modal.classList.add('show');
     
-    // Show JSON Payload
+    // Show JSON Payload (hide if not available or replace with history)
     const payloadBox = document.getElementById('agent-modal-payload');
     if (agentTaskPayloads[aid]) {
+        payloadBox.style.display = "block";
         payloadBox.innerText = JSON.stringify(agentTaskPayloads[aid], null, 2);
     } else {
-        payloadBox.innerText = "No active task payload.";
+        payloadBox.style.display = "none";
     }
 
     // Reset streaming area
     const logsBox = document.getElementById('agent-modal-logs');
     logsBox.innerText = "대기 중... (실시간 스트리밍은 작업이 시작되면 여기에 표시됩니다.)\n\n";
 
-    // Read or ask memory file
-    fetch(`/api/memory/${aid}_memory.md`)
+    // Fetch History
+    const historyBox = document.getElementById('agent-modal-history');
+    historyBox.innerHTML = '<div class="loading-spinner">Loading history...</div>';
+    
+    fetch('/api/current_state')
         .then(res => res.json())
-        .then(data => {
-            logsBox.innerText += "--- [이전 수행 기록] ---\n" + (data.content || "이전 수행 기록이 아직 없습니다.");
-            logsBox.scrollTop = logsBox.scrollHeight;
+        .then(state => {
+            const wid = state.workflow_id;
+            if (!wid) {
+                historyBox.innerHTML = '<div style="color:var(--text-secondary); padding: 10px;">진행 중인 워크플로우가 없습니다.</div>';
+                return;
+            }
+            fetch(`/api/agent_history/${wid}/${aid}`)
+                .then(r => r.json())
+                .then(data => {
+                    historyBox.innerHTML = '';
+                    if (!data.history || data.history.length === 0) {
+                        historyBox.innerHTML = '<div style="color:var(--text-secondary); padding: 10px;">이 워크플로우에서 수행한 내역이 없습니다.</div>';
+                        return;
+                    }
+                    data.history.forEach((h, idx) => {
+                        const card = document.createElement('div');
+                        card.style.background = '#1a2635';
+                        card.style.padding = '10px';
+                        card.style.borderRadius = '6px';
+                        card.style.borderLeft = '4px solid var(--accent-blue)';
+                        
+                        let html = `<div style="font-size:11px; color:var(--text-secondary); margin-bottom: 5px;">
+                            <strong>Seq:</strong> ${h.task_seq_id} | <strong>From:</strong> ${h.sender_id.toUpperCase()} | <strong>Model:</strong> ${h.model_name}
+                        </div>
+                        <div style="font-size:13px; margin-bottom:8px; line-height: 1.4;">
+                            <strong>Instruction:</strong><br/> ${h.instruction.replace(/\\n/g, '<br/>')}
+                        </div>`;
+                        
+                        if (h.result_content) {
+                            html += `<div style="font-size:12px; background:#121f2f; padding:8px; border-radius:4px; max-height:100px; overflow-y:auto; color:var(--accent-green);">
+                                <strong>Result:</strong><br/> ${h.result_content.replace(/\\n/g, '<br/>')}
+                            </div>`;
+                        }
+                        
+                        card.innerHTML = html;
+                        historyBox.appendChild(card);
+                    });
+                    historyBox.scrollTop = historyBox.scrollHeight;
+                });
         })
         .catch(err => {
-            logsBox.innerText += "\n이력을 불러오지 못했습니다.";
+            historyBox.innerHTML = '<div style="color:var(--accent-red);">히스토리를 불러오지 못했습니다.</div>';
         });
 }
 
@@ -702,6 +750,10 @@ document.getElementById('btn-stop-all').onclick = () => {
 
 // Model switch modal buttons
 document.getElementById('btn-show-model-settings').onclick = () => {
+    if (document.querySelectorAll('.agent-card.working').length > 0) {
+        alert("작업이 진행 중일 때는 모델을 변경할 수 없습니다.");
+        return;
+    }
     document.getElementById('model-modal').classList.add('show');
     loadModelList();
     loadHardwareSpecs();
@@ -713,6 +765,17 @@ document.getElementById('btn-close-modal').onclick = () => {
 
 // Start websocket loop
 connectWebSocket();
+
+// Poll current state periodically
+setInterval(() => {
+    fetch('/api/current_state')
+        .then(res => res.json())
+        .then(data => {
+            const mdLabel = document.getElementById('current-model-name');
+            if(mdLabel) mdLabel.innerText = data.model_name;
+        })
+        .catch(e => console.error(e));
+}, 2000);
 
 // Enforce role-based controls (View-Only Mode)
 if (!isAdmin) {

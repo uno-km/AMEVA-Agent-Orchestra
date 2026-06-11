@@ -21,9 +21,10 @@ def enforce_sandbox(target_path):
         logger.critical(f"SANDBOX BREACH ATTEMPT: {target_path}")
         raise PermissionError(f"[보안] 지정된 작업 공간(Workspace) 외부로 나갈 수 없습니다.")
     
-    # 3. 확장자 화이트리스트 검사
-    if not abs_target.lower().endswith(ALLOWED_EXTENSIONS):
-        raise PermissionError(f"[보안] 허용되지 않는 파일 형식입니다: {os.path.splitext(abs_target)[1]}")
+    # 3. 확장자 화이트리스트 검사 (확장자가 없는 파일은 통과 허용 - __init__, Makefile 등)
+    ext = os.path.splitext(abs_target)[1].lower()
+    if ext and not abs_target.lower().endswith(ALLOWED_EXTENSIONS):
+        raise PermissionError(f"[보안] 허용되지 않는 파일 형식입니다: {ext}")
         
     return abs_target
 

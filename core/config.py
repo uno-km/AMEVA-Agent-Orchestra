@@ -40,16 +40,16 @@ AVAILABLE_MODELS = [
     {
         "id": "qwen_2.5_0.5b",
         "name": "Qwen2.5 0.5B (Nano - 권장 RAM 2GB)",
-        "filename": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+        "filename": "qwen2.5-0.5b-q4_k_m.gguf",
         "url": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-q4_k_m.gguf",
         "min_ram_gb": 1,
         "is_default": True
     },
     {
         "id": "qwen_2.5_7b",
-        "name": "Qwen2.5 7B Instruct (Heavy - 권장 RAM 16GB)",
-        "filename": "qwen2.5-7b-instruct-q4_k_m.gguf",
-        "url": "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m.gguf",
+        "name": "Qwen2.5 7B Instruct (Heavy - 권장 RAM 16GB) ⭐ Rec.",
+        "filename": "Qwen2.5-7B-Instruct-Q4_K_M.gguf",
+        "url": "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf",
         "min_ram_gb": 12,
         "is_default": False
     },
@@ -59,6 +59,22 @@ AVAILABLE_MODELS = [
         "filename": "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
         "url": "https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/main/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
         "min_ram_gb": 14,
+        "is_default": False
+    },
+    {
+        "id": "qwen_2.5_32b",
+        "name": "Qwen2.5 32B Instruct (Titan - 권장 RAM 24GB)",
+        "filename": "qwen2.5-32b-instruct-q4_k_m.gguf",
+        "url": "https://huggingface.co/Qwen/Qwen2.5-32B-Instruct-GGUF/resolve/main/qwen2.5-32b-instruct-q4_k_m.gguf",
+        "min_ram_gb": 22,
+        "is_default": False
+    },
+    {
+        "id": "gemma_2_27b",
+        "name": "Gemma 2 27B Instruct (Google Elite - 권장 RAM 20GB)",
+        "filename": "gemma-2-27b-it-Q4_K_M.gguf",
+        "url": "https://huggingface.co/bartowski/gemma-2-27b-it-GGUF/resolve/main/gemma-2-27b-it-Q4_K_M.gguf",
+        "min_ram_gb": 18,
         "is_default": False
     }
 ]

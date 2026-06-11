@@ -73,6 +73,31 @@ def setup_db():
         )
     ''')
     
+    # 6. code_files — Dev가 파일별로 생성한 코드 이력
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS code_files (
+            file_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            workflow_id TEXT,
+            task_seq_id INTEGER,
+            file_path TEXT,
+            content TEXT,
+            review_round INTEGER DEFAULT 0,
+            created_at TEXT,
+            FOREIGN KEY (workflow_id) REFERENCES workflows(workflow_id)
+        )
+    ''')
+
+    # Schema Migration for model_name and sender_id
+    try:
+        cursor.execute("ALTER TABLE tasks ADD COLUMN model_name TEXT")
+    except sqlite3.OperationalError:
+        pass # Column already exists
+    
+    try:
+        cursor.execute("ALTER TABLE tasks ADD COLUMN sender_id TEXT")
+    except sqlite3.OperationalError:
+        pass # Column already exists
+        
     conn.commit()
     conn.close()
 
@@ -103,16 +128,48 @@ class DatabaseManager:
         return max_seq + 1
 
     @staticmethod
-    def create_task(workflow_id: str, agent_id: str, instruction: str) -> int:
+    def create_task(workflow_id: str, agent_id: str, instruction: str, model_name: str = "", sender_id: str = "") -> int:
         task_seq_id = DatabaseManager.get_next_task_seq(workflow_id)
         created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO tasks (workflow_id, task_seq_id, agent_id, instruction, created_at) VALUES (?, ?, ?, ?, ?)",
-                       (workflow_id, task_seq_id, agent_id, instruction, created_at))
+        cursor.execute("INSERT INTO tasks (workflow_id, task_seq_id, agent_id, instruction, created_at, model_name, sender_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                       (workflow_id, task_seq_id, agent_id, instruction, created_at, model_name, sender_id))
         conn.commit()
         conn.close()
         return task_seq_id
+
+    @staticmethod
+    def get_agent_workflow_history(workflow_id: str, agent_id: str) -> list:
+        conn = get_connection()
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        # Retrieve all tasks and their details for the specified agent in the workflow
+        query = """
+            SELECT t.task_seq_id, t.instruction, t.model_name, t.sender_id, t.created_at,
+                   d.action_type, d.payload_json, d.result_content
+            FROM tasks t
+            LEFT JOIN task_dtl d ON t.workflow_id = d.workflow_id AND t.task_seq_id = d.task_seq_id
+            WHERE t.workflow_id = ? AND t.agent_id = ?
+            ORDER BY t.task_seq_id ASC, d.dtl_id ASC
+        """
+        cursor.execute(query, (workflow_id, agent_id))
+        rows = cursor.fetchall()
+        conn.close()
+        
+        history = []
+        for r in rows:
+            history.append({
+                "task_seq_id": r["task_seq_id"],
+                "instruction": r["instruction"],
+                "model_name": r["model_name"] or "Unknown",
+                "sender_id": r["sender_id"] or "Unknown",
+                "created_at": r["created_at"],
+                "action_type": r["action_type"],
+                "payload_json": r["payload_json"],
+                "result_content": r["result_content"]
+            })
+        return history
 
     @staticmethod
     def log_task_dtl(workflow_id: str, task_seq_id: int, agent_id: str, action_type: str, payload_json: dict, result_content: str):
@@ -144,6 +201,58 @@ class DatabaseManager:
                        (log_type, message, created_at))
         conn.commit()
         conn.close()
+
+    @staticmethod
+    def upsert_code_file(workflow_id: str, task_seq_id: int, file_path: str, content: str, review_round: int = 0):
+        """Dev가 파일을 생성/수정할 때 DB에 기록 (같은 파일 경로면 업데이트)"""
+        created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        conn = get_connection()
+        cursor = conn.cursor()
+        # Check if file already exists for this workflow
+        cursor.execute(
+            "SELECT file_id FROM code_files WHERE workflow_id = ? AND file_path = ?",
+            (workflow_id, file_path)
+        )
+        row = cursor.fetchone()
+        if row:
+            cursor.execute(
+                "UPDATE code_files SET content = ?, task_seq_id = ?, review_round = ?, created_at = ? WHERE file_id = ?",
+                (content, task_seq_id, review_round, created_at, row[0])
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO code_files (workflow_id, task_seq_id, file_path, content, review_round, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (workflow_id, task_seq_id, file_path, content, review_round, created_at)
+            )
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def get_code_structure(workflow_id: str) -> list:
+        """워크플로우에서 Dev가 생성한 모든 파일 목록과 메타데이터 반환"""
+        conn = get_connection()
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT file_path, review_round, created_at FROM code_files WHERE workflow_id = ? ORDER BY file_id ASC",
+            (workflow_id,)
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        return [{"file_path": r["file_path"], "review_round": r["review_round"], "created_at": r["created_at"]} for r in rows]
+
+    @staticmethod
+    def get_code_file_content(workflow_id: str, file_path: str) -> str:
+        """특정 파일의 최신 코드 내용 반환 (코드 리뷰에 활용)"""
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT content FROM code_files WHERE workflow_id = ? AND file_path = ?",
+            (workflow_id, file_path)
+        )
+        row = cursor.fetchone()
+        conn.close()
+        return row[0] if row else ""
 
     @staticmethod
     def get_workflow_context(workflow_id: str) -> str:

@@ -571,15 +571,23 @@ button {
     padding: 25px;
     width: 550px;
     max-width: 90vw;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    /* ── 핵심 오버플로우 수정 ── */
+    max-height: 90vh;           /* 뷰포트 90% 이상 절대 불가 */
     display: flex;
     flex-direction: column;
     gap: 15px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    overflow: hidden;           /* 자식이 삐져나오지 못하도록 */
 }
 
 .log-modal-content {
-    width: 750px;
-    height: 520px;
+    width: 1400px;
+    max-width: 95vw;
+    max-height: 90vh;   /* 항상 뷰포트 안에 가둠 */
+    height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;   /* 자식이 뚫고 나오지 못하도록 */
 }
 
 .modal-content h2 {
@@ -664,10 +672,12 @@ button {
     display: flex;
     justify-content: flex-end;
     margin-top: 10px;
+    flex-shrink: 0;  /* Close 버튼이 절대 밀려나지 않도록 고정 */
 }
 
 .agent-log-terminal {
     flex: 1;
+    min-height: 0;  /* flex 자식의 overflow 스크롤이 실제로 작동하도록 */
     background: #121f2f;
     color: var(--text-primary);
     border-radius: 8px;

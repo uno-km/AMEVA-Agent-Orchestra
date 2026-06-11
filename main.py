@@ -248,6 +248,20 @@ async def list_memory_files():
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/api/current_state")
+async def get_current_state():
+    engine = LlamaInferenceCore.get_instance()
+    model_name = os.path.basename(engine.current_model_path) if engine.current_model_path else "Not Loaded"
+    return {
+        "model_name": model_name,
+        "workflow_id": getattr(orchestrator, "current_workflow_id", "")
+    }
+
+@app.get("/api/agent_history/{workflow_id}/{agent_id}")
+async def get_agent_history(workflow_id: str, agent_id: str):
+    history = DatabaseManager.get_agent_workflow_history(workflow_id, agent_id)
+    return {"status": "ok", "history": history}
+
 @app.get("/api/memory/{filename}")
 async def get_memory_file(filename: str):
     agent_id = filename.replace("_memory.md", "")

@@ -3,7 +3,7 @@ from agents.schemas import PROMPTS
 from core.sre import logger
 
 class Orchestrator:
-    VALID_TARGETS = {"pm", "secretary", "architect", "dev", "doc", "tester"}
+    VALID_TARGETS = {"pm", "secretary", "architect", "dev", "tester"}
     MAX_HANDOFFS = 12
 
     def __init__(self):
@@ -53,6 +53,8 @@ class Orchestrator:
         if not workflow_id:
             workflow_id = str(uuid.uuid4())
             
+        self.current_workflow_id = workflow_id
+        
         initial_task = {
             "workflow_id": workflow_id,
             "original_goal": user_request,
@@ -60,10 +62,11 @@ class Orchestrator:
                 f"Goal: {user_request}. Analyze the objective and design an optimal multi-agent workflow. "
                 "You are not restricted to any fixed sequence. You may choose to find existing files, "
                 "modify code, summarize documents, or create new assets as needed. "
-                "Assign tasks to architect, dev, or doc agents in the most logical order to achieve the goal efficiently."
+                "Assign tasks to architect, dev, or tester in the most logical order to achieve the goal efficiently."
             ),
             "hop_count": 0,
-            "visited_targets": []
+            "visited_targets": [],
+            "sender_id": "user"
         }
         self.dispatch_worker("pm", initial_task)
 
@@ -72,6 +75,8 @@ class Orchestrator:
             task_data["hop_count"] = 0
         if "visited_targets" not in task_data:
             task_data["visited_targets"] = []
+        if "sender_id" not in task_data:
+            task_data["sender_id"] = "unknown"
 
         valid, err = self._validate_task(agent_id, task_data)
         if not valid:
@@ -114,6 +119,7 @@ class Orchestrator:
         # 다음 태스크가 있다면 시그널 발송 -> 웹 UI 브로드캐스트
         if next_task and "target" in next_task:
             target_id = next_task["target"]
+            next_task["sender_id"] = agent_id
             self.emit_event("handoff_triggered", agent_id, target_id, next_task)
             self.dispatch_worker(target_id, next_task)
 
