@@ -21,6 +21,17 @@ if (-not (Test-Path -Path $EnvDir)) {
     if ($hasNvidia) {
         $cudaPath = [Environment]::GetEnvironmentVariable('CUDA_PATH')
         if (-not $cudaPath) {
+            # Try fetching from Machine level if terminal hasn't been restarted
+            $machineCuda = [Environment]::GetEnvironmentVariable('CUDA_PATH', 'Machine')
+            if ($machineCuda) {
+                Write-Host "=> Discovered CUDA_PATH from registry. Applying to current session without restart." -ForegroundColor Green
+                [Environment]::SetEnvironmentVariable('CUDA_PATH', $machineCuda, 'Process')
+                $env:PATH += ";$machineCuda\bin"
+                $cudaPath = $machineCuda
+            }
+        }
+        
+        if (-not $cudaPath) {
             Write-Host "=> [WARNING] NVIDIA GPU detected, but CUDA Toolkit (CUDA_PATH) is missing! Reverting to CPU mode." -ForegroundColor Yellow
             $hasNvidia = $false
         }
