@@ -4,7 +4,7 @@ from core.sre import logger
 
 class Orchestrator:
     VALID_TARGETS = {"pm", "secretary", "architect", "dev", "tester"}
-    MAX_HANDOFFS = 12
+    MAX_HANDOFFS = 50
 
     def __init__(self):
         self.workers = {}

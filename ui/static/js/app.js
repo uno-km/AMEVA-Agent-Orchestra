@@ -743,22 +743,15 @@ function openAgentLog(aid) {
     modal.querySelector('#agent-modal-title').innerText = `${aid.toUpperCase()} AGENT LOGS`;
     modal.classList.add('show');
     
-    // Show JSON Payload (hide if not available or replace with history)
-    const payloadBox = document.getElementById('agent-modal-payload');
-    if (agentTaskPayloads[aid]) {
-        payloadBox.style.display = "block";
-        payloadBox.innerText = JSON.stringify(agentTaskPayloads[aid], null, 2);
-    } else {
-        payloadBox.style.display = "none";
-    }
-
     // Reset streaming area
     const logsBox = document.getElementById('agent-modal-logs');
     logsBox.innerText = "대기 중... (실시간 스트리밍은 작업이 시작되면 여기에 표시됩니다.)\n\n";
 
-    // Fetch History
-    const historyBox = document.getElementById('agent-modal-history');
+    // Task Details & List Area
+    const historyBox = document.getElementById('agent-modal-task-list');
+    const detailBox = document.getElementById('agent-modal-task-detail');
     historyBox.innerHTML = '<div class="loading-spinner">Loading history...</div>';
+    detailBox.innerHTML = '<div style="padding: 20px; color: var(--text-secondary); text-align: center;">리스트에서 태스크를 선택해주세요.</div>';
     
     fetch('/api/current_state')
         .then(res => res.json())
@@ -777,27 +770,68 @@ function openAgentLog(aid) {
                         return;
                     }
                     data.history.forEach((h, idx) => {
-                        const card = document.createElement('div');
-                        card.style.background = '#1a2635';
-                        card.style.padding = '10px';
-                        card.style.borderRadius = '6px';
-                        card.style.borderLeft = '4px solid var(--accent-blue)';
+                        const item = document.createElement('div');
+                        item.className = 'agent-modal-task-item';
                         
-                        let html = `<div style="font-size:11px; color:var(--text-secondary); margin-bottom: 5px;">
-                            <strong>Seq:</strong> ${h.task_seq_id} | <strong>From:</strong> ${h.sender_id.toUpperCase()} | <strong>Model:</strong> ${h.model_name}
-                        </div>
-                        <div style="font-size:13px; margin-bottom:8px; line-height: 1.4;">
-                            <strong>Instruction:</strong><br/> ${h.instruction.replace(/\\n/g, '<br/>')}
-                        </div>`;
+                        // Parse JSON payload safely
+                        let payload = {};
+                        try {
+                            payload = JSON.parse(h.payload_json);
+                        } catch(e) {}
+
+                        // Instruction snippet
+                        let instrSnippet = h.instruction;
+                        if(instrSnippet.length > 50) instrSnippet = instrSnippet.substring(0, 50) + '...';
+
+                        item.innerHTML = `
+                            <div style="font-size:11px; color:var(--text-secondary); margin-bottom: 5px;">
+                                <strong>Seq:</strong> ${h.task_seq_id} | <strong>From:</strong> ${h.sender_id.toUpperCase()}
+                            </div>
+                            <div style="font-size:13px; font-weight:600; color:var(--accent-blue); margin-bottom: 5px;">${h.action_type || 'TASK'}</div>
+                            <div style="font-size:11px; color:var(--text-secondary);">${instrSnippet}</div>
+                            <div style="font-size:10px; margin-top:5px; color:#bdc3c7;">${h.request_time || ''}</div>
+                        `;
                         
-                        if (h.result_content) {
-                            html += `<div style="font-size:12px; background:#121f2f; padding:8px; border-radius:4px; max-height:100px; overflow-y:auto; color:var(--accent-green);">
-                                <strong>Result:</strong><br/> ${h.result_content.replace(/\\n/g, '<br/>')}
-                            </div>`;
-                        }
+                        item.onclick = () => {
+                            // Highlight selected item
+                            document.querySelectorAll('.agent-modal-task-item').forEach(el => el.classList.remove('active'));
+                            item.classList.add('active');
+
+                            let elapsedText = "N/A";
+                            if (h.request_time && h.completion_time) {
+                                const reqDate = new Date(h.request_time.replace(' ', 'T'));
+                                const compDate = new Date(h.completion_time.replace(' ', 'T'));
+                                const diffMs = compDate - reqDate;
+                                if (diffMs >= 0) {
+                                    elapsedText = (diffMs / 1000).toFixed(1) + "초";
+                                }
+                            }
+                            
+                            let detailHtml = `
+                                <div class="detail-metric"><span>Model:</span> <span>${h.model_name || 'N/A'}</span></div>
+                                <div class="detail-metric"><span>Requested:</span> <span>${h.request_time || 'N/A'}</span></div>
+                                <div class="detail-metric"><span>Completed:</span> <span>${h.completion_time || 'N/A'}</span></div>
+                                <div class="detail-metric"><span>Elapsed:</span> <span>${elapsedText}</span></div>
+                            `;
+
+                            if(h.action_type) {
+                                detailHtml += `<div class="detail-metric"><span>Action:</span> <span>${h.action_type}</span></div>`;
+                            }
+
+                            detailHtml += `<hr style="border:0; border-top:1px solid #333; margin:10px 0;"/>
+                                           <div style="color:var(--accent-green); margin-bottom:5px;"><strong>Payload Data:</strong></div>
+                                           <pre style="margin:0; padding:10px; background:#0d1520; border-radius:4px; overflow-x:auto; font-size:11px;">${JSON.stringify(payload, null, 2)}</pre>`;
+                                           
+                            if (h.result_content) {
+                                detailHtml += `<hr style="border:0; border-top:1px solid #333; margin:10px 0;"/>
+                                               <div style="color:#e67e22; margin-bottom:5px;"><strong>Result Content:</strong></div>
+                                               <pre style="margin:0; padding:10px; background:#0d1520; border-radius:4px; overflow-x:auto; font-size:11px; max-height:200px; overflow-y:auto;">${h.result_content}</pre>`;
+                            }
+
+                            detailBox.innerHTML = `<div class="agent-modal-detail-box">${detailHtml}</div>`;
+                        };
                         
-                        card.innerHTML = html;
-                        historyBox.appendChild(card);
+                        historyBox.appendChild(item);
                     });
                     historyBox.scrollTop = historyBox.scrollHeight;
                 });
@@ -806,6 +840,30 @@ function openAgentLog(aid) {
             historyBox.innerHTML = '<div style="color:var(--accent-red);">히스토리를 불러오지 못했습니다.</div>';
         });
 }
+
+// Check GPU Mode on startup and periodically
+async function checkSystemState() {
+    try {
+        const res = await fetch('/api/current_state');
+        const data = await res.json();
+        
+        const nameSpan = document.getElementById('current-model-name');
+        
+        if (data.is_gpu) {
+            document.body.classList.add('theme-gpu');
+            if (nameSpan) nameSpan.innerText = `[🚀 GPU MODE] ${data.model_name}`;
+        } else {
+            document.body.classList.remove('theme-gpu');
+            if (nameSpan) nameSpan.innerText = `${data.model_name}`;
+        }
+    } catch(e) {
+        console.error("Failed to fetch system state:", e);
+    }
+}
+
+// Call checkSystemState initially and set interval
+checkSystemState();
+setInterval(checkSystemState, 10000);
 
 function closeAgentLogModal() {
     document.getElementById('agent-log-modal').classList.remove('show');

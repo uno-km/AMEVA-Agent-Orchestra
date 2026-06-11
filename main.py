@@ -285,9 +285,17 @@ async def get_workspace_file_content(file_path: str):
 async def get_current_state():
     engine = LlamaInferenceCore.get_instance()
     model_name = os.path.basename(engine.current_model_path) if engine.current_model_path else "Not Loaded"
+    is_gpu = False
+    try:
+        import GPUtil
+        if GPUtil.getGPUs():
+            is_gpu = True
+    except:
+        pass
     return {
         "model_name": model_name,
-        "workflow_id": getattr(orchestrator, "current_workflow_id", "")
+        "workflow_id": getattr(orchestrator, "current_workflow_id", ""),
+        "is_gpu": is_gpu
     }
 
 @app.get("/api/agent_history/{workflow_id}/{agent_id}")

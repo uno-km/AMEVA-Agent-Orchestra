@@ -146,7 +146,8 @@ class DatabaseManager:
         cursor = conn.cursor()
         # Retrieve all tasks and their details for the specified agent in the workflow
         query = """
-            SELECT t.task_seq_id, t.instruction, t.model_name, t.sender_id, t.created_at,
+            SELECT t.task_seq_id, t.instruction, t.model_name, t.sender_id, 
+                   t.created_at AS request_time, d.created_at AS completion_time,
                    d.action_type, d.payload_json, d.result_content
             FROM tasks t
             LEFT JOIN task_dtl d ON t.workflow_id = d.workflow_id AND t.task_seq_id = d.task_seq_id
@@ -164,7 +165,8 @@ class DatabaseManager:
                 "instruction": r["instruction"],
                 "model_name": r["model_name"] or "Unknown",
                 "sender_id": r["sender_id"] or "Unknown",
-                "created_at": r["created_at"],
+                "request_time": r["request_time"],
+                "completion_time": r["completion_time"],
                 "action_type": r["action_type"],
                 "payload_json": r["payload_json"],
                 "result_content": r["result_content"]

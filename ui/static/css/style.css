@@ -948,6 +948,201 @@ button {
     background: rgba(255,255,255,0.1);
 }
 
+        height: auto !important;
+        overflow: visible !important;
+        padding: 15px;
+        gap: 20px;
+    }
+
+    #left-panel {
+        flex: none !important;
+        width: 100% !important;
+    }
+
+    #right-panel {
+        flex: none !important;
+        width: 100% !important;
+        min-width: unset !important;
+        height: auto !important;
+        overflow-y: visible !important;
+    }
+
+    #office-board {
+        min-width: unset !important;
+        height: auto !important;
+        min-height: 380px;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        align-content: flex-start !important;
+        gap: 15px !important;
+        padding: 30px 20px !important;
+        overflow: visible !important;
+    }
+
+    .agent-card {
+        position: relative !important;
+        left: auto !important;
+        top: auto !important;
+        width: calc(33.333% - 10px) !important;
+        min-width: 180px !important;
+        height: 230px !important;
+        margin: 0 !important;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important;
+    }
+
+    #command-input-area {
+        flex-direction: row;
+    }
+
+    /* Modal size tweaks */
+    .modal-content {
+        width: 95vw !important;
+        max-width: 600px !important;
+    }
+
+    .log-modal-content {
+        max-width: 95vw !important;
+        width: 95vw !important;
+        height: auto !important;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+}
+
+/* Mobile Devices (768px and below) */
+@media (max-width: 768px) {
+    .agent-card {
+        width: calc(50% - 8px) !important;
+        min-width: 140px !important;
+        height: 220px !important;
+        padding: 10px !important;
+    }
+
+    .agent-emoji {
+        font-size: 28px !important;
+    }
+
+    .agent-name {
+        font-size: 11px !important;
+    }
+
+    #command-input-area {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #btn-send-command {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Fix inline flex direction in Agent Details Log Modal */
+    .log-modal-content > div[style*="display: flex"] {
+        flex-direction: column !important;
+        height: auto !important;
+        gap: 15px !important;
+    }
+
+    .agent-log-terminal {
+        height: 220px !important;
+        min-height: 200px !important;
+    }
+}
+
+/* Toast Notifications */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    border-left: 5px solid transparent;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+    font-size: 13px;
+    pointer-events: auto;
+    max-width: 350px;
+    word-break: break-word;
+}
+
+.toast-error {
+    border-left-color: var(--accent-red);
+    background-color: rgba(231, 76, 60, 0.1);
+}
+
+.toast-info {
+    border-left-color: var(--accent-blue);
+    background-color: rgba(52, 152, 219, 0.1);
+}
+
+/* Workspace Explorer list */
+#workspace-list-container {
+    height: 120px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--bg-board);
+    overflow-y: auto;
+}
+
+#workspace-list {
+    list-style: none;
+}
+
+#workspace-list li {
+    padding: 8px 15px;
+    border-bottom: 1px solid var(--glass-border);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+#workspace-list li:hover {
+    background-color: rgba(255,255,255,0.05);
+}
+
+#workspace-list li.selected {
+    background-color: var(--accent-green);
+    color: white;
+}
+
+/* Viewer Tabs */
+.viewer-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
+
+.viewer-tab {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.viewer-tab:hover {
+    color: var(--text-primary);
+    background: rgba(255,255,255,0.1);
+}
+
 .viewer-tab.active {
     color: var(--accent-yellow);
     background: rgba(251, 197, 49, 0.15);
@@ -959,4 +1154,68 @@ button {
     font-family: 'Roboto Mono', monospace;
     white-space: pre-wrap;
     word-break: break-all;
+}
+
+/* GPU Mode Theme Overrides */
+body.theme-gpu #main-header {
+    background: linear-gradient(135deg, rgba(39, 174, 96, 0.15), rgba(0,0,0,0.8));
+    border-bottom: 2px solid #2ecc71;
+}
+
+body.theme-gpu .logo-area h1 {
+    background: linear-gradient(135deg, #2ecc71, #f5f6fa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+body.theme-gpu .btn-primary {
+    background-color: #27ae60;
+}
+
+body.theme-gpu .btn-primary:hover {
+    background-color: #2ecc71;
+    box-shadow: 0 0 15px rgba(46, 204, 113, 0.4);
+}
+
+body.theme-gpu .section-title {
+    color: #2ecc71;
+}
+
+/* Agent Log Modal 3-Column Tweaks */
+.agent-modal-task-item {
+    background: #1a2635;
+    padding: 10px;
+    border-radius: 6px;
+    border-left: 4px solid var(--accent-blue);
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.agent-modal-task-item:hover {
+    background: #243447;
+}
+
+.agent-modal-task-item.active {
+    background: #243447;
+    border-left-color: var(--accent-green);
+}
+
+.agent-modal-detail-box {
+    background: #121f2f;
+    padding: 15px;
+    border-radius: 6px;
+    margin-top: 10px;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 12px;
+    color: var(--text-primary);
+    overflow-y: auto;
+    max-height: 400px;
+}
+
+.detail-metric {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    color: var(--accent-yellow);
 }
