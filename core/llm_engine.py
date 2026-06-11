@@ -88,14 +88,20 @@ class LlamaInferenceCore:
         with self.inference_lock:
             try:
                 import json
+                from llama_cpp import LlamaGrammar
+                
                 schema_str = json.dumps(schema, indent=2, ensure_ascii=False)
+                grammar = LlamaGrammar.from_json_schema(schema_str)
                 prompt = f"<|im_start|>system\n{system_p}\nYou MUST output a valid JSON object matching this JSON Schema:\n{schema_str}\nJSON Only. No markdown formatting.<|im_end|>\n<|im_start|>user\n{user_p}<|im_end|>\n<|im_start|>assistant\n"
                 
                 response = self.llm(
                     prompt, 
                     max_tokens=2500, 
                     stop=["<|im_end|>"], 
-                    temperature=0.1,
+                    temperature=0.4,
+                    top_p=0.9,
+                    repeat_penalty=1.15,
+                    grammar=grammar,
                     stream=True
                 )
                 
