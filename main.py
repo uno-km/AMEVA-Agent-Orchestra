@@ -36,12 +36,12 @@ active_session_logs = deque(maxlen=200)
 active_sre_logs = deque(maxlen=200)
 resource_history = deque(maxlen=50) # holds list of [cpu, ram, gpu]
 agent_states = {
-    "command": {"status": "💤 Standby", "task": "None", "passed": "None", "elapsed": "0s", "tokens": "P:0 / C:0"},
-    "secretary": {"status": "💤 Standby", "task": "None", "passed": "None", "elapsed": "0s", "tokens": "P:0 / C:0"},
-    "file": {"status": "💤 Standby", "task": "None", "passed": "None", "elapsed": "0s", "tokens": "P:0 / C:0"},
-    "code": {"status": "💤 Standby", "task": "None", "passed": "None", "elapsed": "0s", "tokens": "P:0 / C:0"},
+    "pm": {"status": "💤 Standby", "task": "None", "passed": "None", "elapsed": "0s", "tokens": "P:0 / C:0"},
     "tester": {"status": "💤 Standby", "task": "None", "passed": "None", "elapsed": "0s", "tokens": "P:0 / C:0"},
-    "doc": {"status": "💤 Standby", "task": "None", "passed": "None", "elapsed": "0s", "tokens": "P:0 / C:0"},
+    "secretary": {"status": "💤 Standby", "task": "None", "passed": "None", "elapsed": "0s", "tokens": "P:0 / C:0"},
+    "architect": {"status": "💤 Standby", "task": "None", "passed": "None", "elapsed": "0s", "tokens": "P:0 / C:0"},
+    "dev": {"status": "💤 Standby", "task": "None", "passed": "None", "elapsed": "0s", "tokens": "P:0 / C:0"},
+    "doc": {"status": "💤 Standby", "task": "None", "passed": "None", "elapsed": "0s", "tokens": "P:0 / C:0"}
 }
 
 # Active download thread tracking
@@ -240,9 +240,9 @@ async def get_index():
 async def list_memory_files():
     try:
         files = [
-            "command_memory.md", "secretary_memory.md",
-            "file_memory.md", "code_memory.md",
-            "tester_memory.md", "doc_memory.md"
+            "pm_memory.md", "architect_memory.md",
+            "dev_memory.md", "tester_memory.md",
+            "secretary_memory.md", "doc_memory.md"
         ]
         return {"files": files}
     except Exception as e:

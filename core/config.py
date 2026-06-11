@@ -44,6 +44,22 @@ AVAILABLE_MODELS = [
         "url": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-q4_k_m.gguf",
         "min_ram_gb": 1,
         "is_default": True
+    },
+    {
+        "id": "qwen_2.5_7b",
+        "name": "Qwen2.5 7B Instruct (Heavy - 권장 RAM 16GB)",
+        "filename": "qwen2.5-7b-instruct-q4_k_m.gguf",
+        "url": "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m.gguf",
+        "min_ram_gb": 12,
+        "is_default": False
+    },
+    {
+        "id": "llama_3.1_8b",
+        "name": "Llama 3.1 8B Instruct (Pro - 권장 RAM 16GB)",
+        "filename": "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+        "url": "https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/main/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+        "min_ram_gb": 14,
+        "is_default": False
     }
 ]
 

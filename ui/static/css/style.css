@@ -218,7 +218,7 @@ button {
 }
 
 /* Specific Positions matches PyQt layout in 1100x600 coordinate plane */
-#agent-command {
+#agent-pm {
     left: 200px;
     top: 30px;
 }
@@ -226,11 +226,11 @@ button {
     left: 650px;
     top: 30px;
 }
-#agent-file {
+#agent-architect {
     left: 70px;
     top: 270px;
 }
-#agent-code {
+#agent-dev {
     left: 420px;
     top: 270px;
 }

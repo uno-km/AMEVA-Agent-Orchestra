@@ -172,14 +172,14 @@ class DatabaseManager:
             context += f"### [{ts}] Agent: {agent.upper()}\n"
             context += f"**Instruction Received:** {instr}\n"
             
-            if agent == "command":
+            if agent == "pm":
                 thought = payload.get("thought", "")
                 plan = payload.get("overall_plan", "")
                 action = payload.get("next_action", {})
                 target = action.get("target", "None")
                 next_instr = action.get("instruction", "None")
                 
-                context += f"**Commander Thought:** {thought}\n"
+                context += f"**PM Thought:** {thought}\n"
                 context += f"**Overall Plan:** {plan}\n"
                 context += f"**Decision (Next Action):** Delegated to '{target}' with instruction: '{next_instr}'\n\n"
             else:

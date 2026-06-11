@@ -3,7 +3,7 @@ from agents.schemas import PROMPTS
 from core.sre import logger
 
 class Orchestrator:
-    VALID_TARGETS = {"command", "secretary", "file", "code", "doc", "tester"}
+    VALID_TARGETS = {"pm", "secretary", "architect", "dev", "doc", "tester"}
     MAX_HANDOFFS = 12
 
     def __init__(self):
@@ -42,16 +42,16 @@ class Orchestrator:
         if visited.count(target) >= 5:
             return False, f"Loop detected: target '{target}' has already appeared in visited path {visited}."
 
-        if agent_id != "command" and not task_data.get("instruction"):
-            return False, "Invalid task: missing instruction for non-command agent."
+        if agent_id != "pm" and not task_data.get("instruction"):
+            return False, "Invalid task: missing instruction for non-pm agent."
 
         return True, ""
 
     def start_mission(self, user_request, workflow_id=None):
-        """총괄 지휘관(command) 에이전트를 통해 초기 계획(plan) 수립 시작"""
+        """총괄 지휘관(pm) 에이전트를 통해 초기 계획(plan) 수립 시작"""
+        import uuid
         if not workflow_id:
-            from core.database import DatabaseManager
-            workflow_id = DatabaseManager.create_workflow(user_request)
+            workflow_id = str(uuid.uuid4())
             
         initial_task = {
             "workflow_id": workflow_id,
@@ -60,12 +60,12 @@ class Orchestrator:
                 f"Goal: {user_request}. Analyze the objective and design an optimal multi-agent workflow. "
                 "You are not restricted to any fixed sequence. You may choose to find existing files, "
                 "modify code, summarize documents, or create new assets as needed. "
-                "Assign tasks to file, code, or doc agents in the most logical order to achieve the goal efficiently."
+                "Assign tasks to architect, dev, or doc agents in the most logical order to achieve the goal efficiently."
             ),
             "hop_count": 0,
             "visited_targets": []
         }
-        self.dispatch_worker("command", initial_task)
+        self.dispatch_worker("pm", initial_task)
 
     def dispatch_worker(self, agent_id, task_data):
         if "hop_count" not in task_data:
