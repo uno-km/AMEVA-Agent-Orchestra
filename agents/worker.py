@@ -42,6 +42,8 @@ class AgentWorker(threading.Thread):
 
     # ── 스트리밍 콜백 ───────────────────────────────────────
     def _stream_cb(self, delta):
+        if self.isInterruptionRequested():
+            raise Exception("Agent worker interrupted by user request.")
         if self.on_stream:
             self.on_stream(self.agent_id, delta)
 
@@ -88,6 +90,11 @@ class AgentWorker(threading.Thread):
                 self._run_generic()
 
         except Exception as e:
+            if "interrupted by user request" in str(e).lower():
+                logger.info(f"WORKER [{self.agent_id}]: Interrupted by user. Exiting cleanly.")
+                if self.on_fail:
+                    self.on_fail(self.agent_id, "작업 중단됨")
+                return
             tb = traceback.format_exc()
             logger.error(f"WORKER FATAL [{self.agent_id}]: {tb}")
             wid = self.task_data.get("workflow_id", "")

@@ -426,7 +426,7 @@ function stopAgentTimer(aid) {
 }
 
 function resetAllAgentCards() {
-    for (const aid of ['command', 'secretary', 'file', 'code', 'tester', 'doc']) {
+    for (const aid of ['pm', 'secretary', 'architect', 'dev', 'tester']) {
         setAgentStatus(aid, "💤 Standby", false);
         stopAgentTimer(aid);
     }

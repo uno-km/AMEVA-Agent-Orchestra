@@ -583,8 +583,30 @@ def main():
     os.makedirs(MODEL_DIR, exist_ok=True)
     
     # Load default models if already downloaded
-    default_gen = next((m for m in AVAILABLE_GENERAL_MODELS if m.get("is_default")), None)
-    default_cod = next((m for m in AVAILABLE_CODING_MODELS if m.get("is_default")), None)
+    is_gpu = False
+    try:
+        import GPUtil
+        if GPUtil.getGPUs():
+            is_gpu = True
+    except:
+        pass
+
+    if is_gpu:
+        default_gen_id = "llama_3.1_8b"
+        default_cod_id = "qwen_2.5_coder_7b"
+        logger.info("SYSTEM: GPU environment detected. Setting defaults: General=8B (Llama 3.1), Coding=7B (Qwen Coder)")
+    else:
+        default_gen_id = "qwen_2.5_3b"
+        default_cod_id = "qwen_2.5_coder_3b"
+        logger.info("SYSTEM: CPU environment detected. Setting defaults: General=3B (Qwen2.5), Coding=3B (Qwen Coder)")
+
+    for m in AVAILABLE_GENERAL_MODELS:
+        m["is_default"] = (m["id"] == default_gen_id)
+    for m in AVAILABLE_CODING_MODELS:
+        m["is_default"] = (m["id"] == default_cod_id)
+
+    default_gen = next((m for m in AVAILABLE_GENERAL_MODELS if m["id"] == default_gen_id), None)
+    default_cod = next((m for m in AVAILABLE_CODING_MODELS if m["id"] == default_cod_id), None)
     
     if default_gen and default_cod:
         gen_path = os.path.join(MODEL_DIR, default_gen["filename"])

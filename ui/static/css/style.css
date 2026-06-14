@@ -179,7 +179,7 @@ button {
     border: 1px solid var(--border-color);
     height: 520px;
     width: 100%;
-    min-width: 1050px;
+    min-width: 1100px;
     overflow: hidden;
 }
 
@@ -217,52 +217,95 @@ button {
     z-index: 15;
 }
 
-/* Specific Positions matches PyQt layout in 1100x600 coordinate plane */
+/* Specific Positions matches layout in 1100x520 container - perfectly spaced pentagon, 0 overlap */
 #agent-pm {
-    left: 200px;
-    top: 30px;
+    left: 460px;
+    top: 15px;
 }
 #agent-secretary {
-    left: 650px;
-    top: 30px;
+    left: 880px;
+    top: 120px;
 }
-#agent-architect {
-    left: 70px;
-    top: 270px;
+#agent-tester {
+    left: 670px;
+    top: 275px;
 }
 #agent-dev {
-    left: 420px;
-    top: 270px;
+    left: 250px;
+    top: 275px;
 }
-#agent-doc {
-    left: 770px;
-    top: 270px;
+#agent-architect {
+    left: 40px;
+    top: 120px;
 }
 
 /* Card Themes */
+.agent-card[data-rank="commander"] {
+    background: linear-gradient(135deg, #6c5ce7, #8e44ad);
+    border-color: #f1c40f;
+    box-shadow: 0 10px 20px rgba(108, 92, 231, 0.3);
+}
 .agent-card[data-rank="noble"] {
     background: linear-gradient(135deg, #e67e22, #f39c12);
+    border-color: #e67e22;
+    box-shadow: 0 10px 20px rgba(230, 126, 34, 0.3);
 }
-.agent-card[data-rank="dev"] {
-    background: linear-gradient(135deg, #1e3799, #2980b9);
+.agent-card[id="agent-architect"] {
+    background: linear-gradient(135deg, #0984e3, #2980b9);
+    border-color: #0984e3;
+    box-shadow: 0 10px 20px rgba(9, 132, 227, 0.3);
 }
-.agent-card[data-rank="writer"] {
-    background: linear-gradient(135deg, #079992, #1abc9c);
+.agent-card[id="agent-dev"] {
+    background: linear-gradient(135deg, #1e3799, #2b2b52);
+    border-color: #1e3799;
+    box-shadow: 0 10px 20px rgba(30, 55, 153, 0.3);
+}
+.agent-card[id="agent-tester"] {
+    background: linear-gradient(135deg, #10ac84, #00d2d3);
+    border-color: #10ac84;
+    box-shadow: 0 10px 20px rgba(16, 172, 132, 0.3);
 }
 
-/* Working card styles */
+/* Working card styles with smooth breathing float and neon glow pulse */
 .agent-card.working {
-    background: linear-gradient(135deg, #c0392b, #e74c3c) !important;
     border: 3px solid #ff7675;
-    animation: card-pulse 1.5s infinite alternate;
+    animation: card-work 2.5s ease-in-out infinite, card-pulse 1.5s infinite alternate;
+}
+
+.agent-card.working .agent-emoji {
+    animation: emoji-work 1.5s infinite ease-in-out;
+}
+
+@keyframes card-work {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-12px);
+    }
 }
 
 @keyframes card-pulse {
     from {
-        box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+        box-shadow: 0 0 15px rgba(255, 118, 117, 0.4), 0 15px 30px rgba(0,0,0,0.5);
     }
     to {
-        box-shadow: 0 0 25px rgba(231, 76, 60, 0.9);
+        box-shadow: 0 0 35px rgba(255, 118, 117, 0.85), 0 20px 40px rgba(0,0,0,0.6);
+    }
+}
+
+@keyframes emoji-work {
+    0%, 100% {
+        transform: scale(1) rotate(0deg);
+    }
+    25% {
+        transform: scale(1.2) rotate(-8deg);
+    }
+    50% {
+        transform: scale(1) rotate(8deg);
+    }
+    75% {
+        transform: scale(1.2) rotate(-8deg);
     }
 }
 

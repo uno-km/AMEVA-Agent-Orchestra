@@ -159,5 +159,4 @@ class Orchestrator:
     def shutdown_all(self):
         for aid, w in list(self.workers.items()):
             w.requestInterruption()
-            w.join(2.0)
         self.workers.clear()
