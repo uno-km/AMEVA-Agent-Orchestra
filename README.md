@@ -1,4 +1,20 @@
-# AMEVA Agent Orchestra
+# 완전 자율형 로컬 멀티 에이전트 시스템 (AMEVA Agent Orchestra)
+
+> **[프로젝트 요약 (Resume Profile)]**
+> 
+> * **① 제목:** 완전 자율형 로컬 멀티 에이전트 시스템 (AMEVA Agent Orchestra)
+> * **② 주제:** 
+>   * 상용 AI 코딩 에이전트(Claude Code 등)의 핵심 동작 원리를 리버스 엔지니어링하여, 오프라인 로컬 환경(CPU/GPU) 제약 내에서 구동 가능하도록 최적화한 자율형 멀티 에이전트 오케스트레이션
+>   * 명확한 역할(PM, 개발자, QA 등)을 가진 에이전트 파이프라인과 제로 트러스트 샌드박스 환경을 결합하여, 코드 실행부터 오류 발생 시 자율 수정(Auto-Debugging Loop)까지 기획-개발-검증 풀사이클 자동화
+>   * 로컬 모델의 컨텍스트 윈도우 한계와 다중 스레드 병목을 극복하기 위해, 에이전트 간 산출물 요약 전달(Handoff) 및 메모리 방어(Watchdog) 아키텍처 구현
+> * **③ 내용요지:**
+>   * **사용 기술:** `llama-cpp-python` 기반 로컬 추론, `LlamaGrammar`를 활용한 JSON Schema 강제(Guided Generation), `psutil`/`GPUtil` 기반 실시간 리소스 모니터링(SRE) 대시보드 구축
+>   * **핵심 알고리즘:** 스레드 안전성 확보를 위한 `threading.Lock` 제어, 정규식 및 중괄호 스택 기반 JSON 파싱 2차 복구(Hybrid Parser) 알고리즘, OOM 방어(93% 임계치) 및 180초 지연 데드락 강제 회수 로직
+>   * **에이전트/보안 제어:** Architect(기획) ➝ File Manager(설계) ➝ Developer(구현) ➝ Secretary(관제) 상태 전이, 샌드박스 내 `eval`, `subprocess` 등 시스템 파괴 명령어 실시간 차단(Zero-Trust)
+>   * **연구 성과:** 상용 에이전트의 자율 파일 제어 및 디버깅 루프 기능을 로컬 환경에 맞춰 리버스 엔지니어링 달성, 다중 스레드 LLM 호출 시 발생하는 Segmentation Fault 완벽 방어
+> * **④ 기여도:** 단독 개발 (100% - 아키텍처 설계, 보안 시스템 구축, 코어 로직 구현 전담)
+
+---
 
 **Enterprise-Grade Local Multi-Agent Orchestration Framework**
 
