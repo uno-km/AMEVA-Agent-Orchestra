@@ -1,10 +1,8 @@
 @echo off
-:: AMEVA Orchestra 원클릭 가동 래퍼
-:: PowerShell 보안 정책을 우회하여 run.ps1을 실행합니다.
-
-echo [AMEVA] Orchestra system running...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0run.ps1"
-
-echo.
-echo System terminated. Press any key to close.
-pause
+chcp 65001 > nul
+powershell -ExecutionPolicy Bypass -File "%~dp0run.ps1"
+if %errorlevel% neq 0 (
+    echo.
+    echo System encountered an error. Press any key to close.
+    pause
+)
