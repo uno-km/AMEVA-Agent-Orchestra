@@ -13,8 +13,9 @@ def enforce_sandbox(target_path):
     if not target_path or not isinstance(target_path, str):
         raise PermissionError("유효하지 않은 경로 데이터가 입력되었습니다.")
     
-    # 1. 경로 정규화 및 실제 물리 경로 추출
-    abs_target = os.path.realpath(os.path.join(WORKSPACE_DIR, target_path))
+    # 1. 경로 정규화 및 실제 물리 경로 추출 (앞부분의 슬래시/역슬래시를 제거하여 os.path.join이 absolute path로 오인해 WORKSPACE_DIR를 유실하는 버그 방지)
+    clean_target = target_path.lstrip("/\\")
+    abs_target = os.path.realpath(os.path.join(WORKSPACE_DIR, clean_target))
     
     # 2. 루트 디렉토리 이탈 검사 (Strict Prefix Check)
     if not abs_target.startswith(WORKSPACE_DIR + os.sep):
