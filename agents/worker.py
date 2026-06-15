@@ -276,28 +276,55 @@ class AgentWorker(threading.Thread):
         remaining_specs = file_specs[1:]
         current_file_path = current_spec.get("file_path", "unknown.py")
 
-        dev_prompt = (
-            f"### [PAST LOGS & CONTEXT]\n{past_mem}\n\n"
-            f"### [DEV TASK — 단일 파일 구현]\n"
-            f"Project Root: {project_root}\n"
-            f"구현할 파일: {current_file_path}\n\n"
-            f"파일 명세:\n{json.dumps(current_spec, ensure_ascii=False, indent=2)}\n\n"
-            f"전체 프로젝트 요구사항:\n{json.dumps(spec.get('requirements', []), ensure_ascii=False)}\n\n"
-            f"[CRITICAL] DEV_SINGLE_FILE_SCHEMA (file_path, content, message) 형식으로만 출력하십시오.\n"
-            f"[CRITICAL] JSON 내 Python 코드에서 큰따옴표는 반드시 \\\"로 이스케이프하십시오."
-        )
+        retry_count = 0
+        max_retries = 3
+        security_warning = ""
 
-        result_json, usage = self._call_llm(dev_prompt, DEV_SINGLE_FILE_SCHEMA)
+        while retry_count < max_retries:
+            dev_prompt = (
+                f"### [PAST LOGS & CONTEXT]\n{past_mem}\n\n"
+                f"### [DEV TASK — 단일 파일 구현]\n"
+                f"Project Root: {project_root}\n"
+                f"구현할 파일: {current_file_path}\n\n"
+                f"파일 명세:\n{json.dumps(current_spec, ensure_ascii=False, indent=2)}\n\n"
+                f"전체 프로젝트 요구사항:\n{json.dumps(spec.get('requirements', []), ensure_ascii=False)}\n\n"
+            )
+            if security_warning:
+                dev_prompt += (
+                    f"\n[⚠️ 보안 검사 경고 - 보안 위반 감지]\n"
+                    f"이전 코드 작성 시도 중 보안 규칙 위반이 감지되어 시스템에 의해 차단되었습니다:\n"
+                    f"-> {security_warning}\n"
+                    f"이 문제를 즉시 해결하십시오. 위험 코드(예: eval(), exec(), os.system(), subprocess 등)를 절대 사용하지 않고 안전하게 대체 로직을 구현해야 합니다.\n\n"
+                )
+            
+            dev_prompt += (
+                f"[CRITICAL] DEV_SINGLE_FILE_SCHEMA (file_path, content, message) 형식으로만 출력하십시오.\n"
+                f"[CRITICAL] JSON 내 Python 코드에서 큰따옴표는 반드시 \\\"로 이스케이프하십시오."
+            )
 
-        if result_json.get("status") == 500:
-            result_json = {
-                "file_path": current_file_path,
-                "content":   f"# TODO: {current_spec.get('description', 'Implement this file')}\npass",
-                "message":   f"LLM 파싱 실패 — 폴백 스텁 생성: {current_file_path}"
-            }
+            result_json, usage = self._call_llm(dev_prompt, DEV_SINGLE_FILE_SCHEMA)
 
-        # 물리 파일 저장
-        saved_path = self._save_dev_file(project_root, result_json, current_file_path)
+            if result_json.get("status") == 500:
+                result_json = {
+                    "file_path": current_file_path,
+                    "content":   f"# TODO: {current_spec.get('description', 'Implement this file')}\npass",
+                    "message":   f"LLM 파싱 실패 — 폴백 스텁 생성: {current_file_path}"
+                }
+
+            # 물리 파일 저장 시도
+            try:
+                saved_path = self._save_dev_file(project_root, result_json, current_file_path)
+                break  # 성공 시 루프 탈출
+            except ValueError as ve:
+                if "보안 위험" in str(ve) or "security" in str(ve).lower() or "blocked" in str(ve).lower() or "MALICIOUS" in str(ve):
+                    retry_count += 1
+                    security_warning = str(ve)
+                    logger.warning(f"DEV: [{current_file_path}] 보안 차단 발생 (시도 {retry_count}/{max_retries}): {ve}. 재시도 프롬프트 전송.")
+                    if retry_count >= max_retries:
+                        raise ValueError(f"보안 위험 요소 감지 및 자율 수정 {max_retries}회 실패로 중단되었습니다: {ve}")
+                    time.sleep(1)
+                else:
+                    raise ve
 
         # DB 저장 (code_files)
         if workflow_id:
@@ -347,27 +374,53 @@ class AgentWorker(threading.Thread):
         file_path    = current_issue.get("file_path", "")
         existing_code = DatabaseManager.get_code_file_content(workflow_id, file_path) if workflow_id else ""
 
-        fix_prompt = (
-            f"### [PAST LOGS & CONTEXT]\n{past_mem}\n\n"
-            f"### [DEV TASK — 코드 수정]\n"
-            f"수정할 파일: {file_path}\n\n"
-            f"리뷰 이슈:\n{json.dumps(current_issue, ensure_ascii=False, indent=2)}\n\n"
-            f"현재 코드:\n```python\n{existing_code}\n```\n\n"
-            f"[CRITICAL] 수정된 전체 코드를 DEV_SINGLE_FILE_SCHEMA 형식으로 출력하십시오.\n"
-            f"[CRITICAL] JSON 내 Python 코드의 큰따옴표는 반드시 \\\"로 이스케이프하십시오."
-        )
+        retry_count = 0
+        max_retries = 3
+        security_warning = ""
 
-        result_json, usage = self._call_llm(fix_prompt, DEV_SINGLE_FILE_SCHEMA)
+        while retry_count < max_retries:
+            fix_prompt = (
+                f"### [PAST LOGS & CONTEXT]\n{past_mem}\n\n"
+                f"### [DEV TASK — 코드 수정]\n"
+                f"수정할 파일: {file_path}\n\n"
+                f"리뷰 이슈:\n{json.dumps(current_issue, ensure_ascii=False, indent=2)}\n\n"
+                f"현재 코드:\n```python\n{existing_code}\n```\n\n"
+            )
+            if security_warning:
+                fix_prompt += (
+                    f"\n[⚠️ 보안 검사 경고 - 보안 위반 감지]\n"
+                    f"이전 코드 작성 시도 중 보안 규칙 위반이 감지되어 시스템에 의해 차단되었습니다:\n"
+                    f"-> {security_warning}\n"
+                    f"이 문제를 즉시 해결하십시오. 위험 코드(예: eval(), exec(), os.system(), subprocess 등)를 절대 사용하지 않고 안전하게 대체 로직을 구현해야 합니다.\n\n"
+                )
+            fix_prompt += (
+                f"[CRITICAL] 수정된 전체 코드를 DEV_SINGLE_FILE_SCHEMA 형식으로 출력하십시오.\n"
+                f"[CRITICAL] JSON 내 Python 코드의 큰따옴표는 반드시 \\\"로 이스케이프하십시오."
+            )
 
-        if result_json.get("status") == 500:
-            result_json = {
-                "file_path": file_path,
-                "content":   existing_code,
-                "message":   f"수정 파싱 실패 — 원본 유지: {file_path}"
-            }
+            result_json, usage = self._call_llm(fix_prompt, DEV_SINGLE_FILE_SCHEMA)
 
-        # 물리 파일 덮어쓰기
-        self._save_dev_file(project_root, result_json, file_path)
+            if result_json.get("status") == 500:
+                result_json = {
+                    "file_path": file_path,
+                    "content":   existing_code,
+                    "message":   f"수정 파싱 실패 — 원본 유지: {file_path}"
+                }
+
+            # 물리 파일 덮어쓰기 시도
+            try:
+                self._save_dev_file(project_root, result_json, file_path)
+                break
+            except ValueError as ve:
+                if "보안 위험" in str(ve) or "security" in str(ve).lower() or "blocked" in str(ve).lower() or "MALICIOUS" in str(ve):
+                    retry_count += 1
+                    security_warning = str(ve)
+                    logger.warning(f"DEV FIX: [{file_path}] 보안 차단 발생 (시도 {retry_count}/{max_retries}): {ve}. 재시도 프롬프트 전송.")
+                    if retry_count >= max_retries:
+                        raise ValueError(f"보안 위험 요소 감지 및 자율 수정 {max_retries}회 실패로 중단되었습니다: {ve}")
+                    time.sleep(1)
+                else:
+                    raise ve
 
         # DB 업데이트
         if workflow_id:
