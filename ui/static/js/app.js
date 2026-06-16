@@ -492,10 +492,16 @@ async function loadHardwareSpecs() {
         
         // Find specs or ask server
         const specsText = document.getElementById('specs-text');
-        // Retrieve recomended specs
-        if (data.models && data.models.length > 0) {
-            // Pick specs from profiler recommendation
-            const rec = data.models[0];
+        if (data.specs) {
+            const s = data.specs;
+            let gpuInfo = '';
+            if (s.gpu_name && s.gpu_name !== 'None') {
+                gpuInfo = ` | GPU: ${s.gpu_name} (VRAM: ${s.gpu_vram_gb} GB)`;
+            } else {
+                gpuInfo = ` | GPU: None (CPU Only)`;
+            }
+            specsText.innerHTML = `💻 CPU Cores: <span style="color:var(--accent-blue); font-weight:bold;">${s.cpu_cores}</span> | 🧠 RAM: <span style="color:var(--accent-green); font-weight:bold;">${s.ram_gb} GB</span>${gpuInfo}`;
+        } else {
             specsText.innerText = `Detected CPU Cores and RAM requirements. Ready for operations.`;
         }
     } catch (e) {
@@ -648,6 +654,42 @@ async function loadMemoryFiles() {
     } catch(e) { console.error(e); }
 }
 
+async function runWorkspaceFile(filePath) {
+    try {
+        const queryParam = isAdmin ? '?admin=true' : '';
+        const res = await fetch('/api/workspace/run' + queryParam, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({file_path: filePath})
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+            showToast(data.message, "info");
+        } else {
+            showToast(data.message, "error");
+        }
+    } catch (e) {
+        showToast("실행 실패: " + e, "error");
+    }
+}
+
+async function openWorkspaceFolder(filePath = "") {
+    try {
+        const queryParam = isAdmin ? '?admin=true' : '';
+        const res = await fetch('/api/workspace/open_folder' + queryParam, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({file_path: filePath})
+        });
+        const data = await res.json();
+        if (data.status !== 'ok') {
+            showToast(data.message, "error");
+        }
+    } catch (e) {
+        showToast("폴더 열기 실패: " + e, "error");
+    }
+}
+
 async function loadWorkspaceFiles() {
     try {
         const res = await fetch('/api/workspace');
@@ -658,8 +700,59 @@ async function loadWorkspaceFiles() {
         if (data.status === 'ok' && data.files) {
             data.files.forEach(file => {
                 const li = document.createElement('li');
-                li.innerText = '📄 ' + file.path;
-                li.onclick = () => viewWorkspaceFile(file.path, li);
+                li.style.display = 'flex';
+                li.style.justifyContent = 'space-between';
+                li.style.alignItems = 'center';
+                li.style.padding = '6px 12px';
+                
+                const span = document.createElement('span');
+                span.innerText = '📄 ' + file.path;
+                span.style.flex = '1';
+                span.style.cursor = 'pointer';
+                span.onclick = () => viewWorkspaceFile(file.path, li);
+                
+                const actionsDiv = document.createElement('div');
+                actionsDiv.style.display = 'flex';
+                actionsDiv.style.gap = '6px';
+                
+                // Run button only for Python files
+                if (file.path.endsWith('.py')) {
+                    const runBtn = document.createElement('button');
+                    runBtn.innerText = '▶️ Run';
+                    runBtn.style.padding = '2px 8px';
+                    runBtn.style.fontSize = '10px';
+                    runBtn.style.backgroundColor = 'var(--accent-green)';
+                    runBtn.style.color = 'white';
+                    runBtn.style.borderRadius = '4px';
+                    runBtn.style.border = 'none';
+                    runBtn.style.cursor = 'pointer';
+                    runBtn.style.fontWeight = 'bold';
+                    runBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        runWorkspaceFile(file.path);
+                    };
+                    actionsDiv.appendChild(runBtn);
+                }
+                
+                // Open Folder containing the file
+                const folderBtn = document.createElement('button');
+                folderBtn.innerText = '📂 Open';
+                folderBtn.style.padding = '2px 8px';
+                folderBtn.style.fontSize = '10px';
+                folderBtn.style.backgroundColor = '#4b5563';
+                folderBtn.style.color = 'white';
+                folderBtn.style.borderRadius = '4px';
+                folderBtn.style.border = 'none';
+                folderBtn.style.cursor = 'pointer';
+                folderBtn.style.fontWeight = 'bold';
+                folderBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    openWorkspaceFolder(file.path);
+                };
+                actionsDiv.appendChild(folderBtn);
+                
+                li.appendChild(span);
+                li.appendChild(actionsDiv);
                 list.appendChild(li);
             });
         }
@@ -718,7 +811,7 @@ async function viewWorkspaceFile(filepath, liElement) {
     }
 }
 
-// Tab logic
+// Tab logic & Global Button bindings
 document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll('.viewer-tab').forEach(tab => {
         tab.onclick = (e) => {
@@ -731,6 +824,11 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         };
     });
+
+    const openWSDirBtn = document.getElementById('btn-open-workspace');
+    if (openWSDirBtn) {
+        openWSDirBtn.onclick = () => openWorkspaceFolder("");
+    }
 });
 
 // Agent details logs popup

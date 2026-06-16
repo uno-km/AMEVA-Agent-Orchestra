@@ -315,13 +315,36 @@ class AgentWorker(threading.Thread):
             try:
                 saved_path = self._save_dev_file(project_root, result_json, current_file_path)
                 break  # 성공 시 루프 탈출
-            except ValueError as ve:
-                if "보안 위험" in str(ve) or "security" in str(ve).lower() or "blocked" in str(ve).lower() or "MALICIOUS" in str(ve):
+            except (ValueError, PermissionError) as ve:
+                is_security_err = isinstance(ve, PermissionError) or "보안" in str(ve) or "security" in str(ve).lower() or "blocked" in str(ve).lower() or "malicious" in str(ve).lower()
+                if is_security_err:
                     retry_count += 1
                     security_warning = str(ve)
                     logger.warning(f"DEV: [{current_file_path}] 보안 차단 발생 (시도 {retry_count}/{max_retries}): {ve}. 재시도 프롬프트 전송.")
                     if retry_count >= max_retries:
-                        raise ValueError(f"보안 위험 요소 감지 및 자율 수정 {max_retries}회 실패로 중단되었습니다: {ve}")
+                        # 보안 감지 및 자율 수정 실패 시 PM에게 피드백 전달 후 정상 종료
+                        result_json["message"] = f"[보안 차단 발생 - 자율 수정 실패]: {ve}"
+                        next_task = {
+                            "target": "pm",
+                            "instruction": (
+                                f"Goal: {original_goal}. "
+                                f"[⚠️ 보안 규칙 위반 감지] 개발자(Dev)가 '{current_file_path}' 파일을 구현하는 중 보안 위반 코드가 생성되어 시스템에 의해 차단되었습니다.\n"
+                                f"최근 발생한 위반 에러: {security_warning}\n"
+                                f"PM으로서 이 문제를 우회하도록 지시를 명확하게 다시 작성하고, 필요하다면 아키텍트에게 대안 설계를 지시하거나 개발자에게 보안 지침에 맞는 코드를 새로 개발하도록 명령하십시오."
+                            ),
+                            "workflow_id": workflow_id,
+                            "original_goal": original_goal,
+                            "plan": [],
+                            "hop_count": self.task_data.get("hop_count", 0) + 1,
+                            "visited_targets": list(self.task_data.get("visited_targets", [])) + ["dev"],
+                            "sender_id": "dev"
+                        }
+                        if workflow_id:
+                            DatabaseManager.log_task_dtl(workflow_id, task_seq_id, self.agent_id, "security_violation",
+                                                          result_json, result_json.get("message", ""))
+                        if self.on_done:
+                            self.on_done(self.agent_id, result_json, next_task, usage)
+                        return
                     time.sleep(1)
                 else:
                     raise ve
@@ -411,13 +434,36 @@ class AgentWorker(threading.Thread):
             try:
                 self._save_dev_file(project_root, result_json, file_path)
                 break
-            except ValueError as ve:
-                if "보안 위험" in str(ve) or "security" in str(ve).lower() or "blocked" in str(ve).lower() or "MALICIOUS" in str(ve):
+            except (ValueError, PermissionError) as ve:
+                is_security_err = isinstance(ve, PermissionError) or "보안" in str(ve) or "security" in str(ve).lower() or "blocked" in str(ve).lower() or "malicious" in str(ve).lower()
+                if is_security_err:
                     retry_count += 1
                     security_warning = str(ve)
                     logger.warning(f"DEV FIX: [{file_path}] 보안 차단 발생 (시도 {retry_count}/{max_retries}): {ve}. 재시도 프롬프트 전송.")
                     if retry_count >= max_retries:
-                        raise ValueError(f"보안 위험 요소 감지 및 자율 수정 {max_retries}회 실패로 중단되었습니다: {ve}")
+                        # 보안 감지 및 자율 수정 실패 시 PM에게 피드백 전달 후 정상 종료
+                        result_json["message"] = f"[보안 차단 발생 - 자율 수정 실패]: {ve}"
+                        next_task = {
+                            "target": "pm",
+                            "instruction": (
+                                f"Goal: {original_goal}. "
+                                f"[⚠️ 보안 규칙 위반 감지] 개발자(Dev)가 코드 수정 과정에서 '{file_path}' 파일에 보안 위반 코드를 생성하여 시스템에 의해 차단되었습니다.\n"
+                                f"최근 발생한 위반 에러: {security_warning}\n"
+                                f"PM으로서 이 문제를 우회하도록 지시를 명확하게 다시 작성하고, 필요하다면 아키텍트에게 대안 설계를 지시하거나 개발자에게 보안 지침에 맞는 코드를 새로 개발하도록 명령하십시오."
+                            ),
+                            "workflow_id": workflow_id,
+                            "original_goal": original_goal,
+                            "plan": [],
+                            "hop_count": self.task_data.get("hop_count", 0) + 1,
+                            "visited_targets": list(self.task_data.get("visited_targets", [])) + ["dev"],
+                            "sender_id": "dev"
+                        }
+                        if workflow_id:
+                            DatabaseManager.log_task_dtl(workflow_id, task_seq_id, self.agent_id, "security_violation",
+                                                          result_json, result_json.get("message", ""))
+                        if self.on_done:
+                            self.on_done(self.agent_id, result_json, next_task, usage)
+                        return
                     time.sleep(1)
                 else:
                     raise ve

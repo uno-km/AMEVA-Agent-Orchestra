@@ -281,6 +281,59 @@ async def get_workspace_file_content(file_path: str):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@app.post("/api/workspace/open_folder")
+async def open_workspace_folder(request: Request):
+    if not check_admin(request):
+        return {"status": "error", "message": "권한이 없습니다. (관람 전용 모드)"}
+    try:
+        data = await request.json()
+        file_path = data.get("file_path", "")
+        from core.security import enforce_sandbox
+        
+        import subprocess
+        if file_path:
+            safe_path = enforce_sandbox(file_path)
+            if os.path.exists(safe_path):
+                subprocess.Popen(["explorer", "/select,", os.path.normpath(safe_path)])
+                return {"status": "ok", "message": f"탐색기에서 {file_path} 선택함."}
+        
+        subprocess.Popen(["explorer", os.path.normpath(WORKSPACE_DIR)])
+        return {"status": "ok", "message": "워크스페이스 폴더가 열렸습니다."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/workspace/run")
+async def run_workspace_file(request: Request):
+    if not check_admin(request):
+        return {"status": "error", "message": "권한이 없습니다. (관람 전용 모드)"}
+    try:
+        data = await request.json()
+        file_path = data.get("file_path", "")
+        if not file_path:
+            return {"status": "error", "message": "실행할 파일 경로가 지정되지 않았습니다."}
+            
+        from core.security import enforce_sandbox
+        safe_path = enforce_sandbox(file_path)
+        
+        if not os.path.exists(safe_path):
+            return {"status": "error", "message": "파일이 존재하지 않습니다."}
+            
+        if not safe_path.endswith(".py"):
+            return {"status": "error", "message": "파이썬(.py) 스크립트만 실행할 수 있습니다."}
+            
+        py_exe = os.path.normpath(os.path.join(os.getcwd(), "venv", "Scripts", "python.exe"))
+        if not os.path.exists(py_exe):
+            py_exe = "python"
+            
+        import subprocess
+        file_dir = os.path.dirname(safe_path)
+        
+        # Windows에서는 새 콘솔 창을 생성하여 사용자 상호작용 및 stdout을 지원함
+        subprocess.Popen([py_exe, safe_path], cwd=file_dir, creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == 'nt' else 0)
+        return {"status": "ok", "message": f"스크립트 실행 완료: {file_path}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 @app.get("/api/current_state")
 async def get_current_state():
     engine = LlamaInferenceCore.get_instance()
@@ -333,12 +386,13 @@ async def list_models():
         mc["recommended"] = (ram >= mc["min_ram_gb"])
         cod_list.append(mc)
 
-    # Return both model lists
+    # Return both model lists and specs
     return {
         "models": {
             "general": gen_list,
             "coding": cod_list
-        }
+        },
+        "specs": specs
     }
 
 def check_admin(request: Request) -> bool:

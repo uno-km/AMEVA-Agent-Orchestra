@@ -29,3 +29,11 @@ secret.key
 .idea/
 .DS_Store
 Thumbs.db
+
+# 6. SQLite Databases
+*.db
+
+# 7. AMEVA generated workspaces, logs, and memories
+CodeGod_Workspace/
+CodeGod_Logs/
+CodeGod_Memory/
